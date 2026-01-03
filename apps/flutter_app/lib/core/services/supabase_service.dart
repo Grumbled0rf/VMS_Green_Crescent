@@ -1,52 +1,26 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../constants/app_constants.dart';
 
-// ============================================
-// SUPABASE SERVICE
-// Handles Supabase initialization and provides
-// easy access to the Supabase client
-// ============================================
 class SupabaseService {
-  static SupabaseClient? _client;
-
   SupabaseService._();
 
-  // ==========================================
-  // INITIALIZATION
-  // ==========================================
+  /// Get the Supabase client instance
+  static SupabaseClient get client => Supabase.instance.client;
 
-  static Future<void> initialize() async {
-    await Supabase.initialize(
-      url: AppConstants.supabaseUrl,
-      anonKey: AppConstants.supabaseAnonKey,
-    );
-    _client = Supabase.instance.client;
-  }
+  /// Get current user
+  static User? get currentUser => Supabase.instance.client.auth.currentUser;
 
-  // ==========================================
-  // CLIENT ACCESS
-  // ==========================================
+  /// Check if user is logged in
+  static bool get isLoggedIn => Supabase.instance.client.auth.currentUser != null;
 
-  static SupabaseClient get client {
-    if (_client == null) {
-      throw Exception('Supabase not initialized. Call SupabaseService.initialize() first.');
-    }
-    return _client!;
-  }
+  /// Get current session
+  static Session? get currentSession => Supabase.instance.client.auth.currentSession;
 
-  static User? get currentUser => client.auth.currentUser;
+  /// Auth state changes stream
+  static Stream<AuthState> get authStateChanges =>
+      Supabase.instance.client.auth.onAuthStateChange;
 
-  static bool get isLoggedIn => currentUser != null;
-
-  static Session? get currentSession => client.auth.currentSession;
-
-  // ==========================================
-  // AUTH SHORTCUTS
-  // ==========================================
-
-  static Stream<AuthState> get authStateChanges => client.auth.onAuthStateChange;
-
+  /// Sign out
   static Future<void> signOut() async {
-    await client.auth.signOut();
+    await Supabase.instance.client.auth.signOut();
   }
 }
