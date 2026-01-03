@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/services/auth_service.dart';
+import '../../../core/services/vehicle_service.dart';
 import '../../../shared/models/vehicle.dart';
 import '../../auth/screens/login_screen.dart';
 import '../../vehicles/screens/add_vehicle_screen.dart';
 import '../../vehicles/screens/vehicle_detail_screen.dart';
 import '../../booking/screens/booking_screen.dart';
+import '../../profile/screens/edit_profile_screen.dart';
+import '../../settings/screens/settings_screen.dart';
 
-// ============================================
-// DASHBOARD SCREEN
-// Main home screen with tabs
-// ============================================
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
 
@@ -20,37 +20,33 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   int _currentIndex = 0;
+  List<Vehicle> _vehicles = [];
+  bool _isLoading = true;
+  String? _error;
 
-  final List<Vehicle> _vehicles = [
-    Vehicle(
-      id: '1',
-      plateNumber: 'A 12345',
-      emirate: 'Dubai',
-      make: 'Toyota',
-      model: 'Land Cruiser',
-      year: 2022,
-      fuelType: 'Petrol',
-      color: 'White',
-      lastTestDate: DateTime.now().subtract(const Duration(days: 200)),
-      nextTestDue: DateTime.now().add(const Duration(days: 165)),
-    ),
-    Vehicle(
-      id: '2',
-      plateNumber: 'B 98765',
-      emirate: 'Dubai',
-      make: 'Nissan',
-      model: 'Patrol',
-      year: 2021,
-      fuelType: 'Petrol',
-      color: 'Black',
-      lastTestDate: DateTime.now().subtract(const Duration(days: 340)),
-      nextTestDue: DateTime.now().add(const Duration(days: 25)),
-    ),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _loadVehicles();
+  }
+
+  Future<void> _loadVehicles() async {
+    setState(() { _isLoading = true; _error = null; });
+    final result = await VehicleService.getAll();
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+        if (result.isSuccess) {
+          _vehicles = result.data ?? [];
+        } else {
+          _error = result.message;
+        }
+      });
+    }
+  }
 
   int get _totalVehicles => _vehicles.length;
-  int get _compliantVehicles => _vehicles.where((v) => 
-    v.nextTestDue != null && !v.isTestDue && !v.isTestExpiringSoon).length;
+  int get _compliantVehicles => _vehicles.where((v) => v.nextTestDue != null && !v.isTestDue && !v.isTestExpiringSoon).length;
   int get _expiringVehicles => _vehicles.where((v) => v.isTestExpiringSoon).length;
   int get _noTestVehicles => _vehicles.where((v) => v.lastTestDate == null).length;
 
@@ -59,7 +55,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       MaterialPageRoute(builder: (_) => AddVehicleScreen(onVehicleAdded: (v) {})),
     );
     if (result != null) {
-      setState(() => _vehicles.add(result));
+      _loadVehicles();
       _showSnackBar('Vehicle added successfully! 🎉');
     }
   }
@@ -69,21 +65,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
       MaterialPageRoute(
         builder: (_) => VehicleDetailScreen(
           vehicle: vehicle,
-          onVehicleUpdated: (v) {
-            setState(() {
-              final i = _vehicles.indexWhere((x) => x.id == v.id);
-              if (i != -1) _vehicles[i] = v;
-            });
-          },
-          onVehicleDeleted: (id) {
-            setState(() => _vehicles.removeWhere((v) => v.id == id));
-          },
+          onVehicleUpdated: (v) => _loadVehicles(),
+          onVehicleDeleted: (id) => _loadVehicles(),
         ),
       ),
     );
-    if (result == 'deleted') {
-      setState(() => _vehicles.removeWhere((v) => v.id == vehicle.id));
+    if (result == 'deleted') _loadVehicles();
+  }
+
+  void _navigateToEditProfile() async {
+    final result = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(builder: (_) => const EditProfileScreen()),
+    );
+    if (result == true) {
+      setState(() {}); // Refresh to show updated name
     }
+  }
+
+  void _navigateToSettings() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const SettingsScreen()),
+    );
   }
 
   @override
@@ -104,39 +106,59 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Widget _buildBody() {
     switch (_currentIndex) {
-      case 0:
-        return _buildHomeTab();
-      case 1:
-        return _buildVehiclesTab();
-      case 2:
-        return BookingScreen(vehicles: _vehicles);
-      case 3:
-        return _buildProfileTab();
-      default:
-        return _buildHomeTab();
+      case 0: return _buildHomeTab();
+      case 1: return _buildVehiclesTab();
+      case 2: return BookingScreen(vehicles: _vehicles);
+      case 3: return _buildProfileTab();
+      default: return _buildHomeTab();
     }
   }
 
   Widget _buildHomeTab() {
-    return CustomScrollView(
-      slivers: [
-        _buildSliverAppBar(),
-        SliverPadding(
-          padding: const EdgeInsets.all(20),
-          sliver: SliverList(
-            delegate: SliverChildListDelegate([
-              _buildWelcomeSection(),
-              const SizedBox(height: 24),
-              _buildStatsSection(),
-              const SizedBox(height: 24),
-              _buildQuickActions(),
-              const SizedBox(height: 24),
-              _buildRecentVehicles(),
-              const SizedBox(height: 100),
-            ]),
+    return RefreshIndicator(
+      onRefresh: _loadVehicles,
+      child: CustomScrollView(
+        slivers: [
+          _buildSliverAppBar(),
+          SliverPadding(
+            padding: const EdgeInsets.all(20),
+            sliver: SliverList(
+              delegate: SliverChildListDelegate([
+                _buildWelcomeSection(),
+                const SizedBox(height: 24),
+                if (_isLoading)
+                  const Center(child: Padding(padding: EdgeInsets.all(40), child: CircularProgressIndicator()))
+                else if (_error != null)
+                  _buildErrorState()
+                else ...[
+                  _buildStatsSection(),
+                  const SizedBox(height: 24),
+                  _buildQuickActions(),
+                  const SizedBox(height: 24),
+                  _buildRecentVehicles(),
+                ],
+                const SizedBox(height: 100),
+              ]),
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildErrorState() {
+    return Container(
+      padding: const EdgeInsets.all(32),
+      decoration: BoxDecoration(color: AppColors.errorLight, borderRadius: BorderRadius.circular(16)),
+      child: Column(
+        children: [
+          const Icon(Icons.error_outline, size: 48, color: AppColors.error),
+          const SizedBox(height: 16),
+          Text(_error ?? 'An error occurred', style: AppTheme.titleMd),
+          const SizedBox(height: 16),
+          ElevatedButton.icon(onPressed: _loadVehicles, icon: const Icon(Icons.refresh), label: const Text('Retry')),
+        ],
+      ),
     );
   }
 
@@ -146,19 +168,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
         title: const Text('My Vehicles'),
         automaticallyImplyLeading: false,
         actions: [
+          IconButton(icon: const Icon(Icons.refresh), onPressed: _loadVehicles),
           IconButton(icon: const Icon(Icons.add), onPressed: _navigateToAddVehicle),
         ],
       ),
-      body: _vehicles.isEmpty
-          ? _buildEmptyState()
-          : ListView.builder(
-              padding: const EdgeInsets.all(20),
-              itemCount: _vehicles.length,
-              itemBuilder: (context, index) => Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: _buildVehicleCard(_vehicles[index], tappable: true),
-              ),
-            ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _vehicles.isEmpty
+              ? _buildEmptyState()
+              : RefreshIndicator(
+                  onRefresh: _loadVehicles,
+                  child: ListView.builder(
+                    padding: const EdgeInsets.all(20),
+                    itemCount: _vehicles.length,
+                    itemBuilder: (context, index) => Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: _buildVehicleCard(_vehicles[index], tappable: true),
+                    ),
+                  ),
+                ),
     );
   }
 
@@ -171,12 +199,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
       title: Row(
         children: [
           Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: AppColors.primaryLight,
-              borderRadius: BorderRadius.circular(10),
-            ),
+            width: 40, height: 40,
+            decoration: BoxDecoration(color: AppColors.primaryLight, borderRadius: BorderRadius.circular(10)),
             child: const Icon(Icons.directions_car, color: AppColors.primary, size: 22),
           ),
           const SizedBox(width: 12),
@@ -196,10 +220,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildWelcomeSection() {
     final hour = DateTime.now().hour;
     final greeting = hour < 12 ? 'Good Morning' : hour < 17 ? 'Good Afternoon' : 'Good Evening';
+    final userName = AuthService.userFullName ?? 'User';
+    final firstName = userName.split(' ').first;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('$greeting! 👋', style: AppTheme.headingMd),
+        Text('$greeting, $firstName! 👋', style: AppTheme.headingMd),
         const SizedBox(height: 4),
         Text('Manage your vehicles and bookings', style: AppTheme.bodyMd),
       ],
@@ -214,39 +241,34 @@ class _DashboardScreenState extends State<DashboardScreen> {
         const SizedBox(height: 16),
         Row(
           children: [
-            Expanded(child: _buildStatCard(Icons.directions_car, 'Total', _totalVehicles.toString(), AppColors.primary, () => setState(() => _currentIndex = 1))),
+            Expanded(child: _buildStatCard(Icons.directions_car, 'Total', _totalVehicles.toString(), AppColors.primary)),
             const SizedBox(width: 12),
-            Expanded(child: _buildStatCard(Icons.check_circle, 'Compliant', _compliantVehicles.toString(), AppColors.success, () => setState(() => _currentIndex = 1))),
+            Expanded(child: _buildStatCard(Icons.check_circle, 'Compliant', _compliantVehicles.toString(), AppColors.success)),
           ],
         ),
         const SizedBox(height: 12),
         Row(
           children: [
-            Expanded(child: _buildStatCard(Icons.warning_amber, 'Expiring', _expiringVehicles.toString(), AppColors.warning, () => setState(() => _currentIndex = 1))),
+            Expanded(child: _buildStatCard(Icons.warning_amber, 'Expiring', _expiringVehicles.toString(), AppColors.warning)),
             const SizedBox(width: 12),
-            Expanded(child: _buildStatCard(Icons.help_outline, 'No Test', _noTestVehicles.toString(), AppColors.gray, () => setState(() => _currentIndex = 1))),
+            Expanded(child: _buildStatCard(Icons.help_outline, 'No Test', _noTestVehicles.toString(), AppColors.gray)),
           ],
         ),
       ],
     );
   }
 
-  Widget _buildStatCard(IconData icon, String label, String value, Color color, VoidCallback? onTap) {
+  Widget _buildStatCard(IconData icon, String label, String value, Color color) {
     return InkWell(
-      onTap: onTap,
+      onTap: () => setState(() => _currentIndex = 1),
       borderRadius: BorderRadius.circular(16),
       child: Container(
         padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: AppColors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.border),
-        ),
+        decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppColors.border)),
         child: Row(
           children: [
             Container(
-              width: 48,
-              height: 48,
+              width: 48, height: 48,
               decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
               child: Icon(icon, color: color, size: 24),
             ),
@@ -327,16 +349,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildVehicleCard(Vehicle vehicle, {bool tappable = false}) {
     final card = Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
-      ),
+      decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppColors.border)),
       child: Row(
         children: [
           Container(
-            width: 56,
-            height: 56,
+            width: 56, height: 56,
             decoration: BoxDecoration(color: AppColors.primaryLight, borderRadius: BorderRadius.circular(14)),
             child: const Icon(Icons.directions_car, color: AppColors.primary, size: 28),
           ),
@@ -363,17 +380,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
     String text;
     Color color;
     if (vehicle.lastTestDate == null) {
-      text = 'No Test';
-      color = AppColors.gray;
+      text = 'No Test'; color = AppColors.gray;
     } else if (vehicle.isTestDue) {
-      text = 'Overdue';
-      color = AppColors.error;
+      text = 'Overdue'; color = AppColors.error;
     } else if (vehicle.isTestExpiringSoon) {
-      text = 'Expiring';
-      color = AppColors.warning;
+      text = 'Expiring'; color = AppColors.warning;
     } else {
-      text = 'Compliant';
-      color = AppColors.success;
+      text = 'Compliant'; color = AppColors.success;
     }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -385,16 +398,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildEmptyState() {
     return Container(
       padding: const EdgeInsets.all(32),
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
-      ),
+      decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppColors.border)),
       child: Column(
         children: [
           Container(
-            width: 80,
-            height: 80,
+            width: 80, height: 80,
             decoration: BoxDecoration(color: AppColors.background, borderRadius: BorderRadius.circular(20)),
             child: const Icon(Icons.directions_car_outlined, size: 40, color: AppColors.lightGray),
           ),
@@ -414,13 +422,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
       appBar: AppBar(
         title: const Text('Profile'),
         automaticallyImplyLeading: false,
-        actions: [IconButton(icon: const Icon(Icons.settings_outlined), onPressed: () => _showSnackBar('Settings coming soon!'))],
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings_outlined),
+            onPressed: _navigateToSettings,
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
             _buildProfileHeader(),
+            const SizedBox(height: 24),
+            _buildProfileStats(),
             const SizedBox(height: 24),
             _buildProfileMenu(),
             const SizedBox(height: 24),
@@ -432,33 +447,69 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildProfileHeader() {
+    final userName = AuthService.userFullName ?? 'User';
+    final userEmail = AuthService.userEmail ?? '';
+    final userPhone = AuthService.userPhone ?? '';
+    final initials = AuthService.userInitials;
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppColors.border)),
       child: Row(
         children: [
           Container(
-            width: 72,
-            height: 72,
+            width: 72, height: 72,
             decoration: BoxDecoration(color: AppColors.primaryLight, borderRadius: BorderRadius.circular(18)),
-            child: const Center(child: Text('JD', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.primary))),
+            child: Center(child: Text(initials, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.primary))),
           ),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('John Doe', style: AppTheme.titleLg),
+                Text(userName, style: AppTheme.titleLg),
                 const SizedBox(height: 4),
-                Text('john.doe@email.com', style: AppTheme.bodyMd),
-                const SizedBox(height: 4),
-                Text('+971 50 123 4567', style: AppTheme.bodySm),
+                Text(userEmail, style: AppTheme.bodyMd),
+                if (userPhone.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(userPhone, style: AppTheme.bodySm),
+                ],
               ],
             ),
           ),
-          IconButton(icon: const Icon(Icons.edit_outlined), onPressed: () => _showSnackBar('Edit profile coming soon!')),
+          IconButton(
+            icon: const Icon(Icons.edit_outlined, color: AppColors.primary),
+            onPressed: _navigateToEditProfile,
+          ),
         ],
       ),
+    );
+  }
+
+  Widget _buildProfileStats() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppColors.border)),
+      child: Row(
+        children: [
+          Expanded(child: _buildProfileStat('Vehicles', _totalVehicles.toString(), Icons.directions_car)),
+          Container(width: 1, height: 40, color: AppColors.border),
+          Expanded(child: _buildProfileStat('Compliant', _compliantVehicles.toString(), Icons.check_circle)),
+          Container(width: 1, height: 40, color: AppColors.border),
+          Expanded(child: _buildProfileStat('Bookings', '0', Icons.calendar_today)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProfileStat(String label, String value, IconData icon) {
+    return Column(
+      children: [
+        Icon(icon, color: AppColors.primary, size: 24),
+        const SizedBox(height: 8),
+        Text(value, style: AppTheme.titleLg),
+        Text(label, style: AppTheme.bodySm),
+      ],
     );
   }
 
@@ -467,15 +518,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
       decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppColors.border)),
       child: Column(
         children: [
-          _buildMenuItem(Icons.person_outline, 'My Account', () {}),
+          _buildMenuItem(Icons.person_outline, 'Edit Profile', _navigateToEditProfile),
           const Divider(height: 1),
-          _buildMenuItem(Icons.notifications_outlined, 'Notifications', () {}),
+          _buildMenuItem(Icons.notifications_outlined, 'Notifications', () => _showSnackBar('Notifications coming soon!')),
           const Divider(height: 1),
-          _buildMenuItem(Icons.security, 'Privacy & Security', () {}),
+          _buildMenuItem(Icons.security, 'Privacy & Security', () => _showSnackBar('Privacy settings coming soon!')),
           const Divider(height: 1),
-          _buildMenuItem(Icons.help_outline, 'Help & Support', () {}),
+          _buildMenuItem(Icons.help_outline, 'Help & Support', () => _showSnackBar('Help & Support coming soon!')),
           const Divider(height: 1),
-          _buildMenuItem(Icons.info_outline, 'About', () {}),
+          _buildMenuItem(Icons.info_outline, 'About', () => _showAboutDialog()),
         ],
       ),
     );
@@ -484,8 +535,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildMenuItem(IconData icon, String title, VoidCallback onTap) {
     return ListTile(
       leading: Container(
-        width: 40,
-        height: 40,
+        width: 40, height: 40,
         decoration: BoxDecoration(color: AppColors.background, borderRadius: BorderRadius.circular(10)),
         child: Icon(icon, color: AppColors.gray, size: 20),
       ),
@@ -524,6 +574,39 @@ class _DashboardScreenState extends State<DashboardScreen> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
+  void _showAboutDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 80, height: 80,
+              decoration: BoxDecoration(color: AppColors.primaryLight, borderRadius: BorderRadius.circular(20)),
+              child: const Icon(Icons.directions_car, color: AppColors.primary, size: 40),
+            ),
+            const SizedBox(height: 16),
+            Text('VMS Green Crescent', style: AppTheme.headingSm),
+            const SizedBox(height: 8),
+            Text('Version 1.0.0', style: AppTheme.bodyMd),
+            const SizedBox(height: 16),
+            Text(
+              'Vehicle Management System for tracking emission tests and bookings.',
+              style: AppTheme.bodySm,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            Text('© 2025 Green Crescent', style: AppTheme.bodySm.copyWith(color: AppColors.gray)),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close')),
+        ],
+      ),
+    );
+  }
+
   void _handleLogout() {
     showDialog(
       context: context,
@@ -533,9 +616,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(context);
-              Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const LoginScreen()));
+              await AuthService.signOut();
+              if (mounted) {
+                Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const LoginScreen()));
+              }
             },
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
             child: const Text('Logout'),

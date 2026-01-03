@@ -2,33 +2,28 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/constants/app_constants.dart';
+import '../../../core/services/vehicle_service.dart';
 import '../../../shared/models/vehicle.dart';
 
 // ============================================
 // ADD VEHICLE SCREEN
-// Form to add a new vehicle
 // ============================================
 class AddVehicleScreen extends StatefulWidget {
   final Function(Vehicle)? onVehicleAdded;
 
-  const AddVehicleScreen({
-    super.key,
-    this.onVehicleAdded,
-  });
+  const AddVehicleScreen({super.key, this.onVehicleAdded});
 
   @override
   State<AddVehicleScreen> createState() => _AddVehicleScreenState();
 }
 
 class _AddVehicleScreenState extends State<AddVehicleScreen> {
-  // Form key
-  final _formKey = GlobalKey<FormState>();
+  int _currentStep = 0;
+  bool _isLoading = false;
 
-  // Controllers
   final _plateNumberController = TextEditingController();
   final _vinController = TextEditingController();
 
-  // Selected values
   String? _selectedEmirate;
   String? _selectedMake;
   String? _selectedModel;
@@ -36,11 +31,6 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
   String? _selectedFuelType;
   String? _selectedColor;
 
-  // State
-  bool _isLoading = false;
-  int _currentStep = 0;
-
-  // Available models based on selected make
   List<String> _availableModels = [];
 
   @override
@@ -50,27 +40,42 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
     super.dispose();
   }
 
-  // ==========================================
-  // ACTIONS
-  // ==========================================
-
-  void _onMakeChanged(String? make) {
-    setState(() {
-      _selectedMake = make;
-      _selectedModel = null;
-      _availableModels = AppConstants.carModels[make] ?? [];
-    });
+  void _nextStep() {
+    if (_validateCurrentStep()) {
+      if (_currentStep < 2) {
+        setState(() => _currentStep++);
+      } else {
+        _saveVehicle();
+      }
+    }
   }
 
-  Future<void> _handleSubmit() async {
-    if (!_formKey.currentState!.validate()) return;
+  void _previousStep() {
+    if (_currentStep > 0) setState(() => _currentStep--);
+  }
 
+  bool _validateCurrentStep() {
+    switch (_currentStep) {
+      case 0:
+        if (_selectedEmirate == null) { _showSnackBar('Please select an emirate'); return false; }
+        if (_plateNumberController.text.trim().isEmpty) { _showSnackBar('Please enter plate number'); return false; }
+        break;
+      case 1:
+        if (_selectedMake == null) { _showSnackBar('Please select a make'); return false; }
+        if (_selectedModel == null) { _showSnackBar('Please select a model'); return false; }
+        if (_selectedYear == null) { _showSnackBar('Please select a year'); return false; }
+        if (_selectedFuelType == null) { _showSnackBar('Please select fuel type'); return false; }
+        break;
+      case 2:
+        if (_vinController.text.isNotEmpty && _vinController.text.length != 17) { _showSnackBar('VIN must be 17 characters'); return false; }
+        break;
+    }
+    return true;
+  }
+
+  Future<void> _saveVehicle() async {
     setState(() => _isLoading = true);
 
-    // Simulate API call
-    await Future.delayed(const Duration(seconds: 2));
-
-    // Create vehicle object
     final vehicle = Vehicle(
       plateNumber: _plateNumberController.text.trim().toUpperCase(),
       emirate: _selectedEmirate!,
@@ -79,20 +84,21 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
       year: _selectedYear!,
       fuelType: _selectedFuelType!,
       color: _selectedColor,
-      vin: _vinController.text.trim().isNotEmpty 
-          ? _vinController.text.trim().toUpperCase() 
-          : null,
+      vin: _vinController.text.trim().isNotEmpty ? _vinController.text.trim().toUpperCase() : null,
     );
+
+    final result = await VehicleService.create(vehicle);
 
     setState(() => _isLoading = false);
 
     if (!mounted) return;
 
-    // Callback
-    widget.onVehicleAdded?.call(vehicle);
-
-    // Show success and go back
-    _showSuccessDialog(vehicle);
+    if (result.isSuccess && result.data != null) {
+      widget.onVehicleAdded?.call(result.data!);
+      _showSuccessDialog(result.data!);
+    } else {
+      _showSnackBar(result.message ?? 'Failed to save vehicle');
+    }
   }
 
   void _showSuccessDialog(Vehicle vehicle) {
@@ -104,28 +110,23 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                color: AppColors.successLight,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.check_circle,
-                color: AppColors.success,
-                size: 48,
-              ),
+              width: 80, height: 80,
+              decoration: const BoxDecoration(color: AppColors.successLight, shape: BoxShape.circle),
+              child: const Icon(Icons.check_circle, color: AppColors.success, size: 48),
             ),
             const SizedBox(height: 24),
-            Text(
-              'Vehicle Added!',
-              style: AppTheme.headingSm,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              '${vehicle.displayName}\n${vehicle.fullPlate}',
-              style: AppTheme.bodyMd,
-              textAlign: TextAlign.center,
+            Text('Vehicle Added!', style: AppTheme.headingSm),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(color: AppColors.background, borderRadius: BorderRadius.circular(12)),
+              child: Column(
+                children: [
+                  Text(vehicle.displayName, style: AppTheme.titleMd),
+                  const SizedBox(height: 4),
+                  Text(vehicle.fullPlate, style: AppTheme.bodyMd),
+                ],
+              ),
             ),
           ],
         ),
@@ -134,8 +135,8 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
             width: double.infinity,
             child: ElevatedButton(
               onPressed: () {
-                Navigator.pop(context); // Close dialog
-                Navigator.pop(context, vehicle); // Return to previous screen
+                Navigator.pop(context);
+                Navigator.pop(context, vehicle);
               },
               child: const Text('Done'),
             ),
@@ -145,334 +146,213 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
     );
   }
 
-  // ==========================================
-  // BUILD
-  // ==========================================
+  void _showSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text('Add Vehicle'),
-        elevation: 0,
-      ),
-      body: Form(
-        key: _formKey,
-        child: Stepper(
-          type: StepperType.vertical,
-          currentStep: _currentStep,
-          onStepContinue: _onStepContinue,
-          onStepCancel: _onStepCancel,
-          onStepTapped: (step) => setState(() => _currentStep = step),
-          controlsBuilder: _buildStepControls,
-          steps: [
-            // Step 1: Plate Information
-            Step(
-              title: const Text('Plate Information'),
-              subtitle: _currentStep > 0 
-                  ? Text('${_selectedEmirate ?? ''} ${_plateNumberController.text}')
-                  : null,
-              isActive: _currentStep >= 0,
-              state: _currentStep > 0 ? StepState.complete : StepState.indexed,
-              content: _buildPlateStep(),
-            ),
-            
-            // Step 2: Vehicle Details
-            Step(
-              title: const Text('Vehicle Details'),
-              subtitle: _currentStep > 1 
-                  ? Text('${_selectedMake ?? ''} ${_selectedModel ?? ''}')
-                  : null,
-              isActive: _currentStep >= 1,
-              state: _currentStep > 1 ? StepState.complete : StepState.indexed,
-              content: _buildVehicleStep(),
-            ),
-            
-            // Step 3: Additional Info
-            Step(
-              title: const Text('Additional Info'),
-              subtitle: const Text('Optional'),
-              isActive: _currentStep >= 2,
-              state: _currentStep > 2 ? StepState.complete : StepState.indexed,
-              content: _buildAdditionalStep(),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ==========================================
-  // STEP 1: PLATE INFORMATION
-  // ==========================================
-
-  Widget _buildPlateStep() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Emirate Dropdown
-        Text('Emirate', style: AppTheme.labelLg),
-        const SizedBox(height: 8),
-        DropdownButtonFormField<String>(
-          value: _selectedEmirate,
-          decoration: const InputDecoration(
-            hintText: 'Select emirate',
-            prefixIcon: Icon(Icons.location_on_outlined),
-          ),
-          items: AppConstants.emirates.map((emirate) {
-            return DropdownMenuItem(
-              value: emirate,
-              child: Text(emirate),
-            );
-          }).toList(),
-          onChanged: (value) => setState(() => _selectedEmirate = value),
-          validator: (value) {
-            if (value == null || value.isEmpty) {
-              return 'Please select an emirate';
-            }
-            return null;
-          },
-        ),
-        const SizedBox(height: 20),
-
-        // Plate Number
-        Text('Plate Number', style: AppTheme.labelLg),
-        const SizedBox(height: 8),
-        TextFormField(
-          controller: _plateNumberController,
-          textCapitalization: TextCapitalization.characters,
-          decoration: const InputDecoration(
-            hintText: 'e.g., A 12345',
-            prefixIcon: Icon(Icons.pin_outlined),
-            helperText: 'Enter plate code and number',
-          ),
-          validator: (value) {
-            if (value == null || value.trim().isEmpty) {
-              return 'Please enter plate number';
-            }
-            if (value.trim().length < 2) {
-              return 'Plate number is too short';
-            }
-            return null;
-          },
-        ),
-        const SizedBox(height: 16),
-      ],
-    );
-  }
-
-  // ==========================================
-  // STEP 2: VEHICLE DETAILS
-  // ==========================================
-
-  Widget _buildVehicleStep() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Make Dropdown
-        Text('Make', style: AppTheme.labelLg),
-        const SizedBox(height: 8),
-        DropdownButtonFormField<String>(
-          value: _selectedMake,
-          decoration: const InputDecoration(
-            hintText: 'Select make',
-            prefixIcon: Icon(Icons.directions_car_outlined),
-          ),
-          items: AppConstants.carMakes.map((make) {
-            return DropdownMenuItem(
-              value: make,
-              child: Text(make),
-            );
-          }).toList(),
-          onChanged: _onMakeChanged,
-          validator: (value) {
-            if (value == null || value.isEmpty) {
-              return 'Please select a make';
-            }
-            return null;
-          },
-        ),
-        const SizedBox(height: 20),
-
-        // Model Dropdown
-        Text('Model', style: AppTheme.labelLg),
-        const SizedBox(height: 8),
-        DropdownButtonFormField<String>(
-          value: _selectedModel,
-          decoration: const InputDecoration(
-            hintText: 'Select model',
-            prefixIcon: Icon(Icons.car_repair),
-          ),
-          items: _availableModels.map((model) {
-            return DropdownMenuItem(
-              value: model,
-              child: Text(model),
-            );
-          }).toList(),
-          onChanged: (value) => setState(() => _selectedModel = value),
-          validator: (value) {
-            if (value == null || value.isEmpty) {
-              return 'Please select a model';
-            }
-            return null;
-          },
-        ),
-        const SizedBox(height: 20),
-
-        // Year Dropdown
-        Text('Year', style: AppTheme.labelLg),
-        const SizedBox(height: 8),
-        DropdownButtonFormField<int>(
-          value: _selectedYear,
-          decoration: const InputDecoration(
-            hintText: 'Select year',
-            prefixIcon: Icon(Icons.calendar_today_outlined),
-          ),
-          items: AppConstants.vehicleYears.map((year) {
-            return DropdownMenuItem(
-              value: year,
-              child: Text(year.toString()),
-            );
-          }).toList(),
-          onChanged: (value) => setState(() => _selectedYear = value),
-          validator: (value) {
-            if (value == null) {
-              return 'Please select a year';
-            }
-            return null;
-          },
-        ),
-        const SizedBox(height: 20),
-
-        // Fuel Type Dropdown
-        Text('Fuel Type', style: AppTheme.labelLg),
-        const SizedBox(height: 8),
-        DropdownButtonFormField<String>(
-          value: _selectedFuelType,
-          decoration: const InputDecoration(
-            hintText: 'Select fuel type',
-            prefixIcon: Icon(Icons.local_gas_station_outlined),
-          ),
-          items: AppConstants.fuelTypes.map((fuel) {
-            return DropdownMenuItem(
-              value: fuel,
-              child: Text(fuel),
-            );
-          }).toList(),
-          onChanged: (value) => setState(() => _selectedFuelType = value),
-          validator: (value) {
-            if (value == null || value.isEmpty) {
-              return 'Please select fuel type';
-            }
-            return null;
-          },
-        ),
-        const SizedBox(height: 16),
-      ],
-    );
-  }
-
-  // ==========================================
-  // STEP 3: ADDITIONAL INFO
-  // ==========================================
-
-  Widget _buildAdditionalStep() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Color Dropdown
-        Text('Color (Optional)', style: AppTheme.labelLg),
-        const SizedBox(height: 8),
-        DropdownButtonFormField<String>(
-          value: _selectedColor,
-          decoration: const InputDecoration(
-            hintText: 'Select color',
-            prefixIcon: Icon(Icons.palette_outlined),
-          ),
-          items: AppConstants.vehicleColors.map((color) {
-            return DropdownMenuItem(
-              value: color,
-              child: Row(
-                children: [
-                  Container(
-                    width: 20,
-                    height: 20,
-                    margin: const EdgeInsets.only(right: 12),
-                    decoration: BoxDecoration(
-                      color: _getColorFromName(color),
-                      shape: BoxShape.circle,
-                      border: Border.all(color: AppColors.border),
-                    ),
-                  ),
-                  Text(color),
-                ],
-              ),
-            );
-          }).toList(),
-          onChanged: (value) => setState(() => _selectedColor = value),
-        ),
-        const SizedBox(height: 20),
-
-        // VIN Number
-        Text('VIN Number (Optional)', style: AppTheme.labelLg),
-        const SizedBox(height: 8),
-        TextFormField(
-          controller: _vinController,
-          textCapitalization: TextCapitalization.characters,
-          maxLength: 17,
-          decoration: const InputDecoration(
-            hintText: 'Enter 17-character VIN',
-            prefixIcon: Icon(Icons.qr_code),
-            helperText: 'Vehicle Identification Number',
-          ),
-          validator: (value) {
-            if (value != null && value.isNotEmpty && value.length != 17) {
-              return 'VIN must be 17 characters';
-            }
-            return null;
-          },
-        ),
-        const SizedBox(height: 16),
-
-        // Summary Card
-        _buildSummaryCard(),
-        const SizedBox(height: 16),
-      ],
-    );
-  }
-
-  Widget _buildSummaryCard() {
-    if (_selectedMake == null || _selectedModel == null) {
-      return const SizedBox.shrink();
-    }
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.primaryLight,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      appBar: AppBar(title: const Text('Add Vehicle')),
+      body: Column(
         children: [
-          Row(
+          _buildStepIndicator(),
+          Expanded(child: SingleChildScrollView(padding: const EdgeInsets.all(20), child: _buildStepContent())),
+          _buildButtons(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStepIndicator() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      color: AppColors.white,
+      child: Row(
+        children: [
+          _buildStepDot(0, 'Plate'),
+          _buildStepLine(0),
+          _buildStepDot(1, 'Details'),
+          _buildStepLine(1),
+          _buildStepDot(2, 'More'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStepDot(int step, String label) {
+    final isActive = _currentStep >= step;
+    final isCurrent = _currentStep == step;
+    return Column(
+      children: [
+        Container(
+          width: 32, height: 32,
+          decoration: BoxDecoration(
+            color: isActive ? AppColors.primary : AppColors.background,
+            shape: BoxShape.circle,
+            border: Border.all(color: isActive ? AppColors.primary : AppColors.border, width: isCurrent ? 2 : 1),
+          ),
+          child: Center(
+            child: isActive && !isCurrent
+                ? const Icon(Icons.check, size: 18, color: Colors.white)
+                : Text('${step + 1}', style: TextStyle(color: isActive ? Colors.white : AppColors.gray, fontWeight: FontWeight.bold)),
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(label, style: TextStyle(fontSize: 11, color: isActive ? AppColors.primary : AppColors.gray, fontWeight: isCurrent ? FontWeight.w600 : FontWeight.normal)),
+      ],
+    );
+  }
+
+  Widget _buildStepLine(int afterStep) {
+    final isActive = _currentStep > afterStep;
+    return Expanded(child: Container(height: 2, margin: const EdgeInsets.only(bottom: 16), color: isActive ? AppColors.primary : AppColors.border));
+  }
+
+  Widget _buildStepContent() {
+    switch (_currentStep) {
+      case 0: return _buildStep1();
+      case 1: return _buildStep2();
+      case 2: return _buildStep3();
+      default: return const SizedBox.shrink();
+    }
+  }
+
+  Widget _buildStep1() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Plate Information', style: AppTheme.headingSm),
+        const SizedBox(height: 8),
+        Text('Enter your vehicle\'s plate details', style: AppTheme.bodyMd),
+        const SizedBox(height: 24),
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppColors.border)),
+          child: Column(
             children: [
-              const Icon(Icons.info_outline, color: AppColors.primary, size: 20),
-              const SizedBox(width: 8),
-              Text(
-                'Vehicle Summary',
-                style: AppTheme.labelLg.copyWith(color: AppColors.primary),
+              DropdownButtonFormField<String>(
+                value: _selectedEmirate,
+                decoration: const InputDecoration(labelText: 'Emirate', prefixIcon: Icon(Icons.location_on_outlined)),
+                items: AppConstants.emirates.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+                onChanged: (v) => setState(() => _selectedEmirate = v),
+              ),
+              const SizedBox(height: 20),
+              TextFormField(
+                controller: _plateNumberController,
+                textCapitalization: TextCapitalization.characters,
+                decoration: const InputDecoration(labelText: 'Plate Number', hintText: 'e.g., A 12345', prefixIcon: Icon(Icons.pin_outlined)),
               ),
             ],
           ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStep2() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Vehicle Details', style: AppTheme.headingSm),
+        const SizedBox(height: 8),
+        Text('Enter your vehicle\'s specifications', style: AppTheme.bodyMd),
+        const SizedBox(height: 24),
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppColors.border)),
+          child: Column(
+            children: [
+              DropdownButtonFormField<String>(
+                value: _selectedMake,
+                decoration: const InputDecoration(labelText: 'Make', prefixIcon: Icon(Icons.directions_car_outlined)),
+                items: AppConstants.carMakes.map((m) => DropdownMenuItem(value: m, child: Text(m))).toList(),
+                onChanged: (v) {
+                  setState(() {
+                    _selectedMake = v;
+                    _selectedModel = null;
+                    _availableModels = AppConstants.carModels[v] ?? [];
+                  });
+                },
+              ),
+              const SizedBox(height: 20),
+              DropdownButtonFormField<String>(
+                value: _selectedModel,
+                decoration: const InputDecoration(labelText: 'Model', prefixIcon: Icon(Icons.car_repair)),
+                items: _availableModels.map((m) => DropdownMenuItem(value: m, child: Text(m))).toList(),
+                onChanged: (v) => setState(() => _selectedModel = v),
+              ),
+              const SizedBox(height: 20),
+              DropdownButtonFormField<int>(
+                value: _selectedYear,
+                decoration: const InputDecoration(labelText: 'Year', prefixIcon: Icon(Icons.calendar_today_outlined)),
+                items: AppConstants.vehicleYears.map((y) => DropdownMenuItem(value: y, child: Text(y.toString()))).toList(),
+                onChanged: (v) => setState(() => _selectedYear = v),
+              ),
+              const SizedBox(height: 20),
+              DropdownButtonFormField<String>(
+                value: _selectedFuelType,
+                decoration: const InputDecoration(labelText: 'Fuel Type', prefixIcon: Icon(Icons.local_gas_station_outlined)),
+                items: AppConstants.fuelTypes.map((f) => DropdownMenuItem(value: f, child: Text(f))).toList(),
+                onChanged: (v) => setState(() => _selectedFuelType = v),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStep3() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Additional Information', style: AppTheme.headingSm),
+        const SizedBox(height: 8),
+        Text('Optional details about your vehicle', style: AppTheme.bodyMd),
+        const SizedBox(height: 24),
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppColors.border)),
+          child: Column(
+            children: [
+              DropdownButtonFormField<String>(
+                value: _selectedColor,
+                decoration: const InputDecoration(labelText: 'Color (Optional)', prefixIcon: Icon(Icons.palette_outlined)),
+                items: AppConstants.vehicleColors.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+                onChanged: (v) => setState(() => _selectedColor = v),
+              ),
+              const SizedBox(height: 20),
+              TextFormField(
+                controller: _vinController,
+                textCapitalization: TextCapitalization.characters,
+                maxLength: 17,
+                decoration: const InputDecoration(labelText: 'VIN Number (Optional)', prefixIcon: Icon(Icons.qr_code), helperText: '17-character Vehicle Identification Number'),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 24),
+        _buildSummary(),
+      ],
+    );
+  }
+
+  Widget _buildSummary() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(color: AppColors.primaryLight, borderRadius: BorderRadius.circular(16)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Summary', style: AppTheme.titleMd),
           const SizedBox(height: 12),
-          _buildSummaryRow('Plate', '${_selectedEmirate ?? '-'} ${_plateNumberController.text.toUpperCase()}'),
-          _buildSummaryRow('Vehicle', '${_selectedMake ?? '-'} ${_selectedModel ?? '-'}'),
-          _buildSummaryRow('Year', _selectedYear?.toString() ?? '-'),
-          _buildSummaryRow('Fuel', _selectedFuelType ?? '-'),
-          if (_selectedColor != null)
-            _buildSummaryRow('Color', _selectedColor!),
+          _buildSummaryRow('Plate', '${_selectedEmirate ?? ''} ${_plateNumberController.text.toUpperCase()}'),
+          _buildSummaryRow('Vehicle', '${_selectedMake ?? ''} ${_selectedModel ?? ''}'),
+          _buildSummaryRow('Year', _selectedYear?.toString() ?? ''),
+          _buildSummaryRow('Fuel', _selectedFuelType ?? ''),
+          if (_selectedColor != null) _buildSummaryRow('Color', _selectedColor!),
         ],
       ),
     );
@@ -483,121 +363,29 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: AppTheme.bodyMd),
-          Text(value, style: AppTheme.titleMd.copyWith(fontSize: 14)),
-        ],
+        children: [Text(label, style: AppTheme.bodySm), Text(value, style: AppTheme.labelLg)],
       ),
     );
   }
 
-  // ==========================================
-  // STEP CONTROLS
-  // ==========================================
-
-  Widget _buildStepControls(BuildContext context, ControlsDetails details) {
-    final isLastStep = _currentStep == 2;
-
-    return Padding(
-      padding: const EdgeInsets.only(top: 20),
+  Widget _buildButtons() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: const BoxDecoration(color: AppColors.white, border: Border(top: BorderSide(color: AppColors.border))),
       child: Row(
         children: [
-          // Continue/Submit Button
+          if (_currentStep > 0) Expanded(child: OutlinedButton(onPressed: _isLoading ? null : _previousStep, child: const Text('Back'))),
+          if (_currentStep > 0) const SizedBox(width: 16),
           Expanded(
             child: ElevatedButton(
-              onPressed: _isLoading ? null : details.onStepContinue,
+              onPressed: _isLoading ? null : _nextStep,
               child: _isLoading
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
-                  : Text(isLastStep ? 'Add Vehicle' : 'Continue'),
+                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : Text(_currentStep == 2 ? 'Save Vehicle' : 'Continue'),
             ),
           ),
-          
-          // Back Button
-          if (_currentStep > 0) ...[
-            const SizedBox(width: 12),
-            Expanded(
-              child: OutlinedButton(
-                onPressed: _isLoading ? null : details.onStepCancel,
-                child: const Text('Back'),
-              ),
-            ),
-          ],
         ],
       ),
     );
-  }
-
-  void _onStepContinue() {
-    // Validate current step
-    if (_currentStep == 0) {
-      if (_selectedEmirate == null || _plateNumberController.text.trim().isEmpty) {
-        _showSnackBar('Please fill all required fields');
-        return;
-      }
-    } else if (_currentStep == 1) {
-      if (_selectedMake == null || _selectedModel == null || 
-          _selectedYear == null || _selectedFuelType == null) {
-        _showSnackBar('Please fill all required fields');
-        return;
-      }
-    }
-
-    if (_currentStep < 2) {
-      setState(() => _currentStep++);
-    } else {
-      // Submit form
-      _handleSubmit();
-    }
-  }
-
-  void _onStepCancel() {
-    if (_currentStep > 0) {
-      setState(() => _currentStep--);
-    }
-  }
-
-  void _showSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
-  }
-
-  Color _getColorFromName(String colorName) {
-    switch (colorName.toLowerCase()) {
-      case 'white':
-        return Colors.white;
-      case 'black':
-        return Colors.black;
-      case 'silver':
-        return Colors.grey.shade400;
-      case 'gray':
-      case 'grey':
-        return Colors.grey;
-      case 'red':
-        return Colors.red;
-      case 'blue':
-        return Colors.blue;
-      case 'green':
-        return Colors.green;
-      case 'brown':
-        return Colors.brown;
-      case 'beige':
-        return const Color(0xFFF5F5DC);
-      case 'gold':
-        return const Color(0xFFFFD700);
-      case 'orange':
-        return Colors.orange;
-      case 'yellow':
-        return Colors.yellow;
-      default:
-        return Colors.grey;
-    }
   }
 }

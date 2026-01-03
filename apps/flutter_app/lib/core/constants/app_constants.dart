@@ -1,9 +1,9 @@
 // ============================================
 // APP CONSTANTS
-// Static data used throughout the app
+// Central configuration for the app
 // ============================================
 class AppConstants {
-  // Prevent instantiation
+  // Private constructor
   AppConstants._();
 
   // ==========================================
@@ -33,7 +33,7 @@ class AppConstants {
   ];
 
   // ==========================================
-  // CAR MAKES (Popular in UAE)
+  // CAR MAKES
   // ==========================================
   static const List<String> carMakes = [
     'Toyota',
@@ -70,258 +70,40 @@ class AppConstants {
   // ==========================================
   static const Map<String, List<String>> carModels = {
     'Toyota': [
-      'Land Cruiser',
-      'Prado',
-      'Camry',
-      'Corolla',
-      'RAV4',
-      'Highlander',
-      'Fortuner',
-      'Hilux',
-      'Yaris',
-      'Avalon',
-      'Supra',
-      '86',
-      'Other',
+      'Land Cruiser', 'Prado', 'Fortuner', 'Hilux', 'Camry', 'Corolla',
+      'Yaris', 'RAV4', 'Highlander', 'Sequoia', 'Avalon', 'Supra',
+      '86', 'C-HR', 'Rush', 'Innova', 'Granvia', 'Previa', 'FJ Cruiser', 'Other',
     ],
     'Nissan': [
-      'Patrol',
-      'Altima',
-      'Maxima',
-      'Sentra',
-      'X-Trail',
-      'Pathfinder',
-      'Kicks',
-      'Sunny',
-      'GT-R',
-      '370Z',
-      'Other',
+      'Patrol', 'Pathfinder', 'X-Trail', 'Altima', 'Maxima', 'Sunny',
+      'Sentra', 'Kicks', 'Juke', 'Murano', 'Armada', 'Navara',
+      'Titan', '370Z', 'GT-R', 'Leaf', 'Qashqai', 'Terra', 'Urvan', 'Other',
     ],
-    'Lexus': [
-      'LX',
-      'GX',
-      'RX',
-      'NX',
-      'ES',
-      'IS',
-      'LS',
-      'LC',
-      'RC',
-      'UX',
-      'Other',
-    ],
-    'BMW': [
-      'X5',
-      'X6',
-      'X7',
-      'X3',
-      'X4',
-      '7 Series',
-      '5 Series',
-      '3 Series',
-      'M3',
-      'M4',
-      'M5',
-      'Z4',
-      'Other',
-    ],
-    'Mercedes-Benz': [
-      'G-Class',
-      'S-Class',
-      'E-Class',
-      'C-Class',
-      'A-Class',
-      'GLE',
-      'GLC',
-      'GLA',
-      'AMG GT',
-      'Maybach',
-      'Other',
-    ],
-    'Audi': [
-      'Q7',
-      'Q8',
-      'Q5',
-      'Q3',
-      'A8',
-      'A6',
-      'A4',
-      'A3',
-      'RS6',
-      'RS7',
-      'R8',
-      'e-tron',
-      'Other',
-    ],
-    'Porsche': [
-      'Cayenne',
-      '911',
-      'Panamera',
-      'Macan',
-      'Taycan',
-      'Cayman',
-      'Boxster',
-      'Other',
-    ],
-    'Land Rover': [
-      'Defender',
-      'Discovery',
-      'Discovery Sport',
-      'Freelander',
-      'Other',
-    ],
-    'Range Rover': [
-      'Range Rover',
-      'Range Rover Sport',
-      'Range Rover Velar',
-      'Range Rover Evoque',
-      'Other',
-    ],
-    'Chevrolet': [
-      'Tahoe',
-      'Suburban',
-      'Silverado',
-      'Camaro',
-      'Corvette',
-      'Malibu',
-      'Impala',
-      'Trailblazer',
-      'Other',
-    ],
-    'GMC': [
-      'Yukon',
-      'Sierra',
-      'Terrain',
-      'Acadia',
-      'Canyon',
-      'Other',
-    ],
-    'Ford': [
-      'Explorer',
-      'Expedition',
-      'F-150',
-      'Mustang',
-      'Edge',
-      'Escape',
-      'Bronco',
-      'Other',
-    ],
-    'Honda': [
-      'Accord',
-      'Civic',
-      'CR-V',
-      'Pilot',
-      'HR-V',
-      'Odyssey',
-      'Other',
-    ],
-    'Hyundai': [
-      'Palisade',
-      'Santa Fe',
-      'Tucson',
-      'Sonata',
-      'Elantra',
-      'Kona',
-      'Other',
-    ],
-    'Kia': [
-      'Telluride',
-      'Sorento',
-      'Sportage',
-      'K5',
-      'Optima',
-      'Carnival',
-      'Other',
-    ],
-    'Mazda': [
-      'CX-9',
-      'CX-5',
-      'CX-30',
-      'Mazda6',
-      'Mazda3',
-      'MX-5',
-      'Other',
-    ],
-    'Mitsubishi': [
-      'Pajero',
-      'Montero',
-      'Outlander',
-      'Eclipse Cross',
-      'ASX',
-      'L200',
-      'Other',
-    ],
-    'Infiniti': [
-      'QX80',
-      'QX60',
-      'QX50',
-      'Q50',
-      'Q60',
-      'Other',
-    ],
-    'Jeep': [
-      'Grand Cherokee',
-      'Wrangler',
-      'Cherokee',
-      'Compass',
-      'Gladiator',
-      'Other',
-    ],
-    'Dodge': [
-      'Durango',
-      'Charger',
-      'Challenger',
-      'Ram 1500',
-      'Other',
-    ],
-    'Volkswagen': [
-      'Touareg',
-      'Tiguan',
-      'Passat',
-      'Golf',
-      'Jetta',
-      'Arteon',
-      'Other',
-    ],
-    'Bentley': [
-      'Bentayga',
-      'Continental GT',
-      'Flying Spur',
-      'Other',
-    ],
-    'Ferrari': [
-      '488',
-      'F8 Tributo',
-      'Roma',
-      'Portofino',
-      'SF90',
-      '812',
-      'Other',
-    ],
-    'Lamborghini': [
-      'Urus',
-      'Huracán',
-      'Aventador',
-      'Other',
-    ],
-    'Maserati': [
-      'Levante',
-      'Ghibli',
-      'Quattroporte',
-      'GranTurismo',
-      'Other',
-    ],
-    'Rolls-Royce': [
-      'Cullinan',
-      'Phantom',
-      'Ghost',
-      'Wraith',
-      'Dawn',
-      'Other',
-    ],
-    'Other': [
-      'Other',
-    ],
+    'Lexus': ['LX', 'GX', 'RX', 'NX', 'UX', 'ES', 'IS', 'LS', 'LC', 'RC', 'LM', 'Other'],
+    'BMW': ['3 Series', '5 Series', '7 Series', 'X1', 'X3', 'X5', 'X6', 'X7', 'M3', 'M4', 'M5', 'M8', 'Z4', 'i4', 'iX', 'i7', 'Other'],
+    'Mercedes-Benz': ['A-Class', 'C-Class', 'E-Class', 'S-Class', 'GLA', 'GLB', 'GLC', 'GLE', 'GLS', 'G-Class', 'AMG GT', 'CLA', 'CLS', 'EQS', 'EQE', 'Maybach', 'Other'],
+    'Audi': ['A3', 'A4', 'A5', 'A6', 'A7', 'A8', 'Q2', 'Q3', 'Q5', 'Q7', 'Q8', 'e-tron', 'RS3', 'RS5', 'RS6', 'RS7', 'R8', 'TT', 'Other'],
+    'Porsche': ['Cayenne', 'Macan', '911', 'Panamera', 'Taycan', 'Boxster', 'Cayman', 'Other'],
+    'Land Rover': ['Defender', 'Discovery', 'Discovery Sport', 'Freelander', 'Other'],
+    'Range Rover': ['Range Rover', 'Range Rover Sport', 'Range Rover Velar', 'Range Rover Evoque', 'Other'],
+    'Chevrolet': ['Tahoe', 'Suburban', 'Traverse', 'Equinox', 'Blazer', 'Trailblazer', 'Silverado', 'Colorado', 'Camaro', 'Corvette', 'Malibu', 'Impala', 'Captiva', 'Other'],
+    'GMC': ['Yukon', 'Yukon XL', 'Sierra', 'Terrain', 'Acadia', 'Canyon', 'Hummer EV', 'Other'],
+    'Ford': ['Expedition', 'Explorer', 'Edge', 'Escape', 'Bronco', 'F-150', 'Ranger', 'Mustang', 'Taurus', 'Fusion', 'Focus', 'EcoSport', 'Other'],
+    'Honda': ['Accord', 'Civic', 'City', 'CR-V', 'HR-V', 'Pilot', 'Passport', 'Odyssey', 'Jazz', 'Other'],
+    'Hyundai': ['Tucson', 'Santa Fe', 'Palisade', 'Kona', 'Creta', 'Venue', 'Elantra', 'Sonata', 'Accent', 'Azera', 'Genesis', 'Veloster', 'Ioniq', 'Other'],
+    'Kia': ['Sportage', 'Sorento', 'Telluride', 'Seltos', 'Soul', 'Carnival', 'Cerato', 'Optima', 'K5', 'K8', 'Stinger', 'EV6', 'Other'],
+    'Mazda': ['CX-3', 'CX-30', 'CX-5', 'CX-9', 'Mazda3', 'Mazda6', 'MX-5', 'Other'],
+    'Mitsubishi': ['Pajero', 'Montero', 'Outlander', 'Eclipse Cross', 'ASX', 'L200', 'Lancer', 'Attrage', 'Other'],
+    'Infiniti': ['QX80', 'QX60', 'QX55', 'QX50', 'Q50', 'Q60', 'Other'],
+    'Jeep': ['Grand Cherokee', 'Cherokee', 'Wrangler', 'Gladiator', 'Compass', 'Renegade', 'Other'],
+    'Dodge': ['Durango', 'Charger', 'Challenger', 'Ram 1500', 'Ram 2500', 'Other'],
+    'Volkswagen': ['Touareg', 'Tiguan', 'T-Roc', 'Golf', 'Passat', 'Arteon', 'ID.4', 'Teramont', 'Other'],
+    'Bentley': ['Bentayga', 'Continental GT', 'Flying Spur', 'Other'],
+    'Ferrari': ['488', 'F8', 'SF90', 'Roma', 'Portofino', '812', 'Purosangue', 'Other'],
+    'Lamborghini': ['Urus', 'Huracán', 'Aventador', 'Revuelto', 'Other'],
+    'Maserati': ['Levante', 'Ghibli', 'Quattroporte', 'MC20', 'Grecale', 'Other'],
+    'Rolls-Royce': ['Phantom', 'Ghost', 'Cullinan', 'Wraith', 'Dawn', 'Spectre', 'Other'],
+    'Other': ['Other'],
   };
 
   // ==========================================
@@ -339,22 +121,12 @@ class AppConstants {
   // VEHICLE COLORS
   // ==========================================
   static const List<String> vehicleColors = [
-    'White',
-    'Black',
-    'Silver',
-    'Gray',
-    'Red',
-    'Blue',
-    'Green',
-    'Brown',
-    'Beige',
-    'Gold',
-    'Orange',
-    'Yellow',
+    'White', 'Black', 'Silver', 'Gray', 'Red', 'Blue',
+    'Green', 'Brown', 'Beige', 'Gold', 'Orange', 'Yellow',
   ];
 
   // ==========================================
-  // VEHICLE YEARS
+  // VEHICLE YEARS (Last 30 years)
   // ==========================================
   static List<int> get vehicleYears {
     final currentYear = DateTime.now().year;
@@ -362,55 +134,32 @@ class AppConstants {
   }
 
   // ==========================================
-  // TIME SLOTS FOR BOOKING
+  // TIME SLOTS
   // ==========================================
   static const List<String> timeSlots = [
-    '08:00 AM',
-    '08:30 AM',
-    '09:00 AM',
-    '09:30 AM',
-    '10:00 AM',
-    '10:30 AM',
-    '11:00 AM',
-    '11:30 AM',
-    '12:00 PM',
-    '12:30 PM',
-    '01:00 PM',
-    '01:30 PM',
-    '02:00 PM',
-    '02:30 PM',
-    '03:00 PM',
-    '03:30 PM',
-    '04:00 PM',
-    '04:30 PM',
-    '05:00 PM',
+    '08:00 AM', '08:30 AM', '09:00 AM', '09:30 AM', '10:00 AM',
+    '10:30 AM', '11:00 AM', '11:30 AM', '12:00 PM', '12:30 PM',
+    '01:00 PM', '01:30 PM', '02:00 PM', '02:30 PM', '03:00 PM',
+    '03:30 PM', '04:00 PM', '04:30 PM', '05:00 PM',
   ];
 
   // ==========================================
-  // BOOKING STATUS
+  // BOOKING STATUSES
   // ==========================================
   static const List<String> bookingStatuses = [
-    'Pending',
-    'Confirmed',
-    'Completed',
-    'Cancelled',
+    'pending', 'confirmed', 'completed', 'cancelled',
   ];
 
   // ==========================================
-  // TEST VALIDITY (in days)
+  // TEST VALIDITY
   // ==========================================
-  static const int testValidityDays = 365; // 1 year
-  static const int expiryWarningDays = 30; // Warn 30 days before
+  static const int testValidityDays = 365;
+  static const int testWarningDays = 30;
 
-  // ==========================================
-  // API ENDPOINTS (for later use)
-  // ==========================================
-  static const String baseUrl = 'https://api.vmsplatform.ae';
-  
   // ==========================================
   // STORAGE KEYS
   // ==========================================
-  static const String tokenKey = 'auth_token';
-  static const String userKey = 'user_data';
-  static const String onboardingKey = 'onboarding_complete';
+  static const String storageAuthToken = 'auth_token';
+  static const String storageUserData = 'user_data';
+  static const String storageOnboarding = 'onboarding_complete';
 }

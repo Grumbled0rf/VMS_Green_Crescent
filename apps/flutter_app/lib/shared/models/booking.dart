@@ -1,30 +1,27 @@
-// ============================================
-// BOOKING MODEL
-// Represents an emission test booking
-// ============================================
 class Booking {
   final String? id;
-  final String? oderId;
+  final String userId;
   final String vehicleId;
   final String testCenterId;
   final DateTime bookingDate;
   final String timeSlot;
-  final String status; // pending, confirmed, completed, cancelled
+  final String status;
   final String? confirmationCode;
   final double? price;
   final String? notes;
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
-  // Related objects (for display)
+  // Joined data from relations
   final String? vehicleName;
   final String? vehiclePlate;
   final String? testCenterName;
   final String? testCenterAddress;
+  final String? testCenterEmirate;
 
   Booking({
     this.id,
-    this.oderId,
+    required this.userId,
     required this.vehicleId,
     required this.testCenterId,
     required this.bookingDate,
@@ -39,114 +36,108 @@ class Booking {
     this.vehiclePlate,
     this.testCenterName,
     this.testCenterAddress,
+    this.testCenterEmirate,
   });
-
-  // ==========================================
-  // COMPUTED PROPERTIES
-  // ==========================================
-
-  /// Formatted date
-  String get formattedDate {
-    final months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-    ];
-    final weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    return '${weekdays[bookingDate.weekday - 1]}, ${bookingDate.day} ${months[bookingDate.month - 1]} ${bookingDate.year}';
-  }
-
-  /// Short date format
-  String get shortDate {
-    return '${bookingDate.day}/${bookingDate.month}/${bookingDate.year}';
-  }
-
-  /// Formatted price
-  String get formattedPrice => 'AED ${(price ?? 0).toStringAsFixed(0)}';
-
-  /// Is booking upcoming
-  bool get isUpcoming {
-    final now = DateTime.now();
-    final bookingDateTime = DateTime(
-      bookingDate.year,
-      bookingDate.month,
-      bookingDate.day,
-    );
-    return bookingDateTime.isAfter(now) || 
-           bookingDateTime.isAtSameMomentAs(DateTime(now.year, now.month, now.day));
-  }
-
-  /// Is booking today
-  bool get isToday {
-    final now = DateTime.now();
-    return bookingDate.year == now.year &&
-           bookingDate.month == now.month &&
-           bookingDate.day == now.day;
-  }
-
-  /// Is pending
-  bool get isPending => status == 'pending';
-
-  /// Is confirmed
-  bool get isConfirmed => status == 'confirmed';
-
-  /// Is completed
-  bool get isCompleted => status == 'completed';
-
-  /// Is cancelled
-  bool get isCancelled => status == 'cancelled';
-
-  /// Can be cancelled
-  bool get canCancel => (isPending || isConfirmed) && isUpcoming;
-
-  // ==========================================
-  // JSON SERIALIZATION
-  // ==========================================
 
   factory Booking.fromJson(Map<String, dynamic> json) {
     return Booking(
-      id: json['id']?.toString(),
-      oderId: json['user_id']?.toString(),
-      vehicleId: json['vehicle_id']?.toString() ?? '',
-      testCenterId: json['test_center_id']?.toString() ?? '',
-      bookingDate: json['booking_date'] != null
-          ? DateTime.parse(json['booking_date'])
+      id: json['id'],
+      userId: json['user_id'] ?? '',
+      vehicleId: json['vehicle_id'] ?? '',
+      testCenterId: json['test_center_id'] ?? '',
+      bookingDate: json['booking_date'] != null 
+          ? DateTime.parse(json['booking_date']) 
           : DateTime.now(),
       timeSlot: json['time_slot'] ?? '',
       status: json['status'] ?? 'pending',
       confirmationCode: json['confirmation_code'],
-      price: json['price']?.toDouble(),
+      price: json['price'] != null ? double.tryParse(json['price'].toString()) : null,
       notes: json['notes'],
-      createdAt: json['created_at'] != null
-          ? DateTime.parse(json['created_at'])
-          : null,
-      updatedAt: json['updated_at'] != null
-          ? DateTime.parse(json['updated_at'])
-          : null,
-      // Related data
-      vehicleName: json['vehicle_name'],
-      vehiclePlate: json['vehicle_plate'],
-      testCenterName: json['test_center_name'],
-      testCenterAddress: json['test_center_address'],
+      createdAt: json['created_at'] != null ? DateTime.parse(json['created_at']) : null,
+      updatedAt: json['updated_at'] != null ? DateTime.parse(json['updated_at']) : null,
+    );
+  }
+
+  factory Booking.fromJsonWithRelations(Map<String, dynamic> json) {
+    final vehicle = json['vehicles'] as Map<String, dynamic>?;
+    final testCenter = json['test_centers'] as Map<String, dynamic>?;
+
+    String? vehicleName;
+    String? vehiclePlate;
+    if (vehicle != null) {
+      vehicleName = '${vehicle['make'] ?? ''} ${vehicle['model'] ?? ''}'.trim();
+      vehiclePlate = '${vehicle['emirate'] ?? ''} ${vehicle['plate_number'] ?? ''}'.trim();
+    }
+
+    return Booking(
+      id: json['id'],
+      userId: json['user_id'] ?? '',
+      vehicleId: json['vehicle_id'] ?? '',
+      testCenterId: json['test_center_id'] ?? '',
+      bookingDate: json['booking_date'] != null 
+          ? DateTime.parse(json['booking_date']) 
+          : DateTime.now(),
+      timeSlot: json['time_slot'] ?? '',
+      status: json['status'] ?? 'pending',
+      confirmationCode: json['confirmation_code'],
+      price: json['price'] != null ? double.tryParse(json['price'].toString()) : null,
+      notes: json['notes'],
+      createdAt: json['created_at'] != null ? DateTime.parse(json['created_at']) : null,
+      updatedAt: json['updated_at'] != null ? DateTime.parse(json['updated_at']) : null,
+      vehicleName: vehicleName,
+      vehiclePlate: vehiclePlate,
+      testCenterName: testCenter?['name'],
+      testCenterAddress: testCenter?['address'],
+      testCenterEmirate: testCenter?['emirate'],
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
-      if (id != null) 'id': id,
+      'id': id,
+      'user_id': userId,
       'vehicle_id': vehicleId,
       'test_center_id': testCenterId,
       'booking_date': bookingDate.toIso8601String().split('T')[0],
       'time_slot': timeSlot,
       'status': status,
-      if (confirmationCode != null) 'confirmation_code': confirmationCode,
-      if (price != null) 'price': price,
-      if (notes != null) 'notes': notes,
+      'confirmation_code': confirmationCode,
+      'price': price,
+      'notes': notes,
     };
+  }
+
+  // Status helpers
+  bool get isPending => status == 'pending';
+  bool get isConfirmed => status == 'confirmed';
+  bool get isCompleted => status == 'completed';
+  bool get isCancelled => status == 'cancelled';
+
+  bool get isUpcoming {
+    final now = DateTime.now();
+    final bookingDateTime = DateTime(bookingDate.year, bookingDate.month, bookingDate.day);
+    final today = DateTime(now.year, now.month, now.day);
+    return bookingDateTime.isAfter(today) || bookingDateTime.isAtSameMomentAs(today);
+  }
+
+  String get formattedDate {
+    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return '${bookingDate.day} ${months[bookingDate.month - 1]} ${bookingDate.year}';
+  }
+
+  String get displayStatus {
+    switch (status) {
+      case 'pending': return 'Pending';
+      case 'confirmed': return 'Confirmed';
+      case 'completed': return 'Completed';
+      case 'cancelled': return 'Cancelled';
+      default: return status;
+    }
   }
 
   Booking copyWith({
     String? id,
-    String? oderId,
+    String? userId,
     String? vehicleId,
     String? testCenterId,
     DateTime? bookingDate,
@@ -155,14 +146,10 @@ class Booking {
     String? confirmationCode,
     double? price,
     String? notes,
-    String? vehicleName,
-    String? vehiclePlate,
-    String? testCenterName,
-    String? testCenterAddress,
   }) {
     return Booking(
       id: id ?? this.id,
-      oderId: oderId ?? this.oderId,
+      userId: userId ?? this.userId,
       vehicleId: vehicleId ?? this.vehicleId,
       testCenterId: testCenterId ?? this.testCenterId,
       bookingDate: bookingDate ?? this.bookingDate,
@@ -173,15 +160,11 @@ class Booking {
       notes: notes ?? this.notes,
       createdAt: createdAt,
       updatedAt: updatedAt,
-      vehicleName: vehicleName ?? this.vehicleName,
-      vehiclePlate: vehiclePlate ?? this.vehiclePlate,
-      testCenterName: testCenterName ?? this.testCenterName,
-      testCenterAddress: testCenterAddress ?? this.testCenterAddress,
+      vehicleName: vehicleName,
+      vehiclePlate: vehiclePlate,
+      testCenterName: testCenterName,
+      testCenterAddress: testCenterAddress,
+      testCenterEmirate: testCenterEmirate,
     );
-  }
-
-  @override
-  String toString() {
-    return 'Booking(id: $id, date: $formattedDate, time: $timeSlot, status: $status)';
   }
 }

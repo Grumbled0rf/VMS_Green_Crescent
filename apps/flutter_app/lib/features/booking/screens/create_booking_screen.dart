@@ -1,24 +1,15 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/constants/app_constants.dart';
+import '../../../core/services/booking_service.dart';
 import '../../../shared/models/vehicle.dart';
 import '../../../shared/models/test_center.dart';
 import '../../../shared/models/booking.dart';
 
-// ============================================
-// CREATE BOOKING SCREEN
-// Step-by-step booking wizard
-// ============================================
 class CreateBookingScreen extends StatefulWidget {
   final List<Vehicle> vehicles;
-  final Vehicle? preselectedVehicle;
 
-  const CreateBookingScreen({
-    super.key,
-    required this.vehicles,
-    this.preselectedVehicle,
-  });
+  const CreateBookingScreen({super.key, required this.vehicles});
 
   @override
   State<CreateBookingScreen> createState() => _CreateBookingScreenState();
@@ -27,106 +18,44 @@ class CreateBookingScreen extends StatefulWidget {
 class _CreateBookingScreenState extends State<CreateBookingScreen> {
   int _currentStep = 0;
   bool _isLoading = false;
+  bool _isLoadingCenters = true;
 
-  // Selections
   Vehicle? _selectedVehicle;
   TestCenter? _selectedCenter;
   DateTime? _selectedDate;
   String? _selectedTimeSlot;
 
-  // Demo test centers - Green Crescent Onsite is first and recommended
-  final List<TestCenter> _testCenters = [
-    // ⭐ RECOMMENDED - Green Crescent Onsite Test
-    TestCenter(
-      id: 'gc-onsite',
-      name: 'Green Crescent Onsite Test',
-      address: 'We come to your location',
-      emirate: 'All Emirates',
-      phone: '+971 800 GCTEST',
-      price: 150,
-      rating: 4.9,
-      openTime: '08:00 AM',
-      closeTime: '06:00 PM',
-      isActive: true,
-    ),
-    // Regular test centers
-    TestCenter(
-      id: '1',
-      name: 'Tasjeel Deira',
-      address: 'Al Khabaisi, Deira',
-      emirate: 'Dubai',
-      phone: '+971 4 269 2222',
-      price: 120,
-      rating: 4.5,
-      openTime: '08:00 AM',
-      closeTime: '05:00 PM',
-    ),
-    TestCenter(
-      id: '2',
-      name: 'ADNOC Service Station',
-      address: 'Sheikh Zayed Road',
-      emirate: 'Dubai',
-      phone: '+971 4 333 4444',
-      price: 120,
-      rating: 4.3,
-      openTime: '08:00 AM',
-      closeTime: '06:00 PM',
-    ),
-    TestCenter(
-      id: '3',
-      name: 'RTA Testing Center',
-      address: 'Al Quoz Industrial Area',
-      emirate: 'Dubai',
-      phone: '+971 4 345 6789',
-      price: 120,
-      rating: 4.7,
-      openTime: '07:30 AM',
-      closeTime: '05:30 PM',
-    ),
-    TestCenter(
-      id: '4',
-      name: 'Shamil Testing',
-      address: 'Al Nahda, Sharjah',
-      emirate: 'Sharjah',
-      phone: '+971 6 555 1234',
-      price: 100,
-      rating: 4.2,
-      openTime: '08:00 AM',
-      closeTime: '05:00 PM',
-    ),
-    TestCenter(
-      id: '5',
-      name: 'ADNOC Musaffah',
-      address: 'Musaffah Industrial Area',
-      emirate: 'Abu Dhabi',
-      phone: '+971 2 666 7890',
-      price: 130,
-      rating: 4.6,
-      openTime: '07:00 AM',
-      closeTime: '06:00 PM',
-    ),
+  List<TestCenter> _testCenters = [];
+
+  final List<String> _timeSlots = [
+    '08:00 - 09:00',
+    '09:00 - 10:00',
+    '10:00 - 11:00',
+    '11:00 - 12:00',
+    '12:00 - 13:00',
+    '14:00 - 15:00',
+    '15:00 - 16:00',
+    '16:00 - 17:00',
+    '17:00 - 18:00',
   ];
-
-  // Available time slots (filtered based on date)
-  List<String> get _availableTimeSlots {
-    // In real app, check availability from API
-    return AppConstants.timeSlots;
-  }
-
-  // Check if center is Green Crescent Onsite
-  bool _isOnsiteTest(TestCenter center) {
-    return center.id == 'gc-onsite';
-  }
 
   @override
   void initState() {
     super.initState();
-    _selectedVehicle = widget.preselectedVehicle;
+    _loadTestCenters();
   }
 
-  // ==========================================
-  // ACTIONS
-  // ==========================================
+  Future<void> _loadTestCenters() async {
+    final result = await BookingService.getTestCenters();
+    if (mounted) {
+      setState(() {
+        _isLoadingCenters = false;
+        if (result.isSuccess) {
+          _testCenters = result.data ?? [];
+        }
+      });
+    }
+  }
 
   void _nextStep() {
     if (_validateCurrentStep()) {
@@ -139,9 +68,7 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
   }
 
   void _previousStep() {
-    if (_currentStep > 0) {
-      setState(() => _currentStep--);
-    }
+    if (_currentStep > 0) setState(() => _currentStep--);
   }
 
   bool _validateCurrentStep() {
@@ -175,42 +102,26 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
   Future<void> _confirmBooking() async {
     setState(() => _isLoading = true);
 
-    // Simulate API call
-    await Future.delayed(const Duration(seconds: 2));
-
-    // Generate confirmation code
-    final prefix = _isOnsiteTest(_selectedCenter!) ? 'GC' : 'VMS';
-    final confirmationCode = '$prefix-${DateTime.now().year}-${DateTime.now().millisecondsSinceEpoch.toString().substring(8)}';
-
-    // Create booking
-    final booking = Booking(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      vehicleId: _selectedVehicle!.id ?? '',
-      testCenterId: _selectedCenter!.id ?? '',
+    final result = await BookingService.create(
+      vehicleId: _selectedVehicle!.id!,
+      testCenterId: _selectedCenter!.id!,
       bookingDate: _selectedDate!,
       timeSlot: _selectedTimeSlot!,
-      status: 'confirmed',
-      confirmationCode: confirmationCode,
       price: _selectedCenter!.price,
-      vehicleName: _selectedVehicle!.displayName,
-      vehiclePlate: _selectedVehicle!.fullPlate,
-      testCenterName: _selectedCenter!.name,
-      testCenterAddress: _isOnsiteTest(_selectedCenter!) 
-          ? 'Onsite - We come to you' 
-          : _selectedCenter!.address,
     );
 
     setState(() => _isLoading = false);
 
     if (!mounted) return;
 
-    // Show success and return
-    _showSuccessDialog(booking);
+    if (result.isSuccess && result.data != null) {
+      _showSuccessDialog(result.data!);
+    } else {
+      _showSnackBar(result.message ?? 'Failed to create booking');
+    }
   }
 
   void _showSuccessDialog(Booking booking) {
-    final isOnsite = _isOnsiteTest(_selectedCenter!);
-    
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -219,68 +130,28 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                color: isOnsite ? AppColors.primaryLight : AppColors.successLight,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                isOnsite ? Icons.home_work : Icons.check_circle,
-                color: isOnsite ? AppColors.primary : AppColors.success,
-                size: 48,
-              ),
+              width: 80, height: 80,
+              decoration: const BoxDecoration(color: AppColors.successLight, shape: BoxShape.circle),
+              child: const Icon(Icons.check_circle, color: AppColors.success, size: 48),
             ),
             const SizedBox(height: 24),
-            Text(
-              isOnsite ? 'Onsite Test Booked!' : 'Booking Confirmed!',
-              style: AppTheme.headingSm,
-            ),
-            const SizedBox(height: 8),
+            Text('Booking Confirmed!', style: AppTheme.headingSm),
+            const SizedBox(height: 16),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                color: AppColors.background,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                booking.confirmationCode ?? '',
-                style: const TextStyle(
-                  fontFamily: 'monospace',
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 2,
-                ),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(color: AppColors.background, borderRadius: BorderRadius.circular(12)),
+              child: Column(
+                children: [
+                  Text('Confirmation Code', style: AppTheme.bodySm),
+                  const SizedBox(height: 4),
+                  Text(booking.confirmationCode ?? '', style: AppTheme.headingMd.copyWith(color: AppColors.primary)),
+                ],
               ),
             ),
             const SizedBox(height: 16),
-            Text(
-              '${booking.formattedDate}\nat ${booking.timeSlot}',
-              style: AppTheme.bodyMd,
-              textAlign: TextAlign.center,
-            ),
-            if (isOnsite) ...[
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: AppColors.primaryLight,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.info_outline, color: AppColors.primary, size: 20),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Our team will contact you to confirm your location.',
-                        style: AppTheme.bodySm.copyWith(color: AppColors.primary),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+            Text(_selectedVehicle?.displayName ?? '', style: AppTheme.titleMd),
+            const SizedBox(height: 4),
+            Text('${booking.formattedDate} • ${booking.timeSlot}', style: AppTheme.bodyMd),
           ],
         ),
         actions: [
@@ -288,8 +159,8 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
             width: double.infinity,
             child: ElevatedButton(
               onPressed: () {
-                Navigator.pop(context); // Close dialog
-                Navigator.pop(context, booking); // Return booking
+                Navigator.pop(context);
+                Navigator.pop(context, booking);
               },
               child: const Text('Done'),
             ),
@@ -300,188 +171,115 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
   }
 
   void _showSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
-
-  // ==========================================
-  // BUILD
-  // ==========================================
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text('Book Emission Test'),
-      ),
+      appBar: AppBar(title: const Text('Book Test')),
       body: Column(
         children: [
-          // Progress indicator
-          _buildProgressIndicator(),
-
-          // Content
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
-              child: _buildStepContent(),
-            ),
-          ),
-
-          // Bottom buttons
-          _buildBottomButtons(),
+          _buildStepIndicator(),
+          Expanded(child: SingleChildScrollView(padding: const EdgeInsets.all(20), child: _buildStepContent())),
+          _buildButtons(),
         ],
       ),
     );
   }
 
-  // ==========================================
-  // PROGRESS INDICATOR
-  // ==========================================
-
-  Widget _buildProgressIndicator() {
+  Widget _buildStepIndicator() {
     return Container(
       padding: const EdgeInsets.all(20),
       color: AppColors.white,
       child: Row(
         children: [
-          _buildStepCircle(0, 'Vehicle'),
+          _buildStepDot(0, 'Vehicle'),
           _buildStepLine(0),
-          _buildStepCircle(1, 'Center'),
+          _buildStepDot(1, 'Center'),
           _buildStepLine(1),
-          _buildStepCircle(2, 'Date'),
+          _buildStepDot(2, 'Date'),
           _buildStepLine(2),
-          _buildStepCircle(3, 'Confirm'),
+          _buildStepDot(3, 'Confirm'),
         ],
       ),
     );
   }
 
-  Widget _buildStepCircle(int step, String label) {
+  Widget _buildStepDot(int step, String label) {
     final isActive = _currentStep >= step;
     final isCurrent = _currentStep == step;
-
     return Column(
       children: [
         Container(
-          width: 32,
-          height: 32,
+          width: 28, height: 28,
           decoration: BoxDecoration(
             color: isActive ? AppColors.primary : AppColors.background,
             shape: BoxShape.circle,
-            border: Border.all(
-              color: isActive ? AppColors.primary : AppColors.border,
-              width: isCurrent ? 2 : 1,
-            ),
+            border: Border.all(color: isActive ? AppColors.primary : AppColors.border, width: isCurrent ? 2 : 1),
           ),
           child: Center(
             child: isActive && !isCurrent
-                ? const Icon(Icons.check, size: 18, color: Colors.white)
-                : Text(
-                    '${step + 1}',
-                    style: TextStyle(
-                      color: isActive ? Colors.white : AppColors.gray,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                ? const Icon(Icons.check, size: 16, color: Colors.white)
+                : Text('${step + 1}', style: TextStyle(color: isActive ? Colors.white : AppColors.gray, fontWeight: FontWeight.bold, fontSize: 12)),
           ),
         ),
         const SizedBox(height: 4),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 10,
-            color: isActive ? AppColors.primary : AppColors.gray,
-            fontWeight: isCurrent ? FontWeight.w600 : FontWeight.normal,
-          ),
-        ),
+        Text(label, style: TextStyle(fontSize: 10, color: isActive ? AppColors.primary : AppColors.gray)),
       ],
     );
   }
 
   Widget _buildStepLine(int afterStep) {
     final isActive = _currentStep > afterStep;
-
-    return Expanded(
-      child: Container(
-        height: 2,
-        margin: const EdgeInsets.only(bottom: 16),
-        color: isActive ? AppColors.primary : AppColors.border,
-      ),
-    );
+    return Expanded(child: Container(height: 2, margin: const EdgeInsets.only(bottom: 16), color: isActive ? AppColors.primary : AppColors.border));
   }
-
-  // ==========================================
-  // STEP CONTENT
-  // ==========================================
 
   Widget _buildStepContent() {
     switch (_currentStep) {
-      case 0:
-        return _buildVehicleStep();
-      case 1:
-        return _buildCenterStep();
-      case 2:
-        return _buildDateTimeStep();
-      case 3:
-        return _buildConfirmStep();
-      default:
-        return const SizedBox.shrink();
+      case 0: return _buildSelectVehicle();
+      case 1: return _buildSelectCenter();
+      case 2: return _buildSelectDateTime();
+      case 3: return _buildConfirmation();
+      default: return const SizedBox.shrink();
     }
   }
 
-  // STEP 1: Select Vehicle
-  Widget _buildVehicleStep() {
+  // Step 1: Select Vehicle
+  Widget _buildSelectVehicle() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text('Select Vehicle', style: AppTheme.headingSm),
         const SizedBox(height: 8),
-        Text(
-          'Choose which vehicle needs an emission test',
-          style: AppTheme.bodyMd,
-        ),
+        Text('Choose the vehicle for emission test', style: AppTheme.bodyMd),
         const SizedBox(height: 24),
-        ...widget.vehicles.map((vehicle) => Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: _buildVehicleOption(vehicle),
-            )),
+        ...widget.vehicles.map((v) => _buildVehicleOption(v)),
       ],
     );
   }
 
   Widget _buildVehicleOption(Vehicle vehicle) {
     final isSelected = _selectedVehicle?.id == vehicle.id;
-
-    return InkWell(
+    return GestureDetector(
       onTap: () => setState(() => _selectedVehicle = vehicle),
-      borderRadius: BorderRadius.circular(16),
       child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: AppColors.white,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isSelected ? AppColors.primary : AppColors.border,
-            width: isSelected ? 2 : 1,
-          ),
+          border: Border.all(color: isSelected ? AppColors.primary : AppColors.border, width: isSelected ? 2 : 1),
         ),
         child: Row(
           children: [
             Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: isSelected ? AppColors.primary : AppColors.primaryLight,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(
-                Icons.directions_car,
-                color: isSelected ? Colors.white : AppColors.primary,
-              ),
+              width: 48, height: 48,
+              decoration: BoxDecoration(color: AppColors.primaryLight, borderRadius: BorderRadius.circular(12)),
+              child: const Icon(Icons.directions_car, color: AppColors.primary),
             ),
-            const SizedBox(width: 16),
+            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -491,581 +289,251 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
                 ],
               ),
             ),
-            if (isSelected)
-              const Icon(Icons.check_circle, color: AppColors.primary),
+            if (isSelected) const Icon(Icons.check_circle, color: AppColors.primary),
           ],
         ),
       ),
     );
   }
 
-  // STEP 2: Select Test Center
-  Widget _buildCenterStep() {
+  // Step 2: Select Test Center
+  Widget _buildSelectCenter() {
+    if (_isLoadingCenters) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text('Select Test Center', style: AppTheme.headingSm),
         const SizedBox(height: 8),
-        Text(
-          'Choose a convenient location for your test',
-          style: AppTheme.bodyMd,
-        ),
+        Text('Choose where to get your test done', style: AppTheme.bodyMd),
         const SizedBox(height: 24),
-        
-        // Map through centers - first one is Green Crescent Onsite (recommended)
-        ..._testCenters.asMap().entries.map((entry) {
-          final index = entry.key;
-          final center = entry.value;
-          final isOnsite = _isOnsiteTest(center);
-          
-          return Padding(
-            padding: EdgeInsets.only(bottom: isOnsite ? 20 : 12),
-            child: isOnsite 
-                ? _buildOnsiteOption(center)
-                : _buildCenterOption(center),
-          );
-        }),
+        if (_testCenters.isEmpty)
+          const Center(child: Text('No test centers available'))
+        else
+          ..._testCenters.map((c) => _buildCenterOption(c)),
       ],
     );
   }
 
-  // ⭐ HIGHLIGHTED ONSITE OPTION
-  Widget _buildOnsiteOption(TestCenter center) {
-    final isSelected = _selectedCenter?.id == center.id;
-
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        InkWell(
-          onTap: () => setState(() => _selectedCenter = center),
-          borderRadius: BorderRadius.circular(16),
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              gradient: isSelected 
-                  ? AppColors.primaryGradient 
-                  : LinearGradient(
-                      colors: [
-                        AppColors.primary.withOpacity(0.1),
-                        AppColors.primaryDark.withOpacity(0.1),
-                      ],
-                    ),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: AppColors.primary,
-                width: isSelected ? 2 : 1.5,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.primary.withOpacity(0.2),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    // Icon with gradient background
-                    Container(
-                      width: 56,
-                      height: 56,
-                      decoration: BoxDecoration(
-                        color: isSelected ? Colors.white.withOpacity(0.2) : AppColors.primary,
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: Icon(
-                        Icons.home_work_rounded,
-                        color: isSelected ? Colors.white : Colors.white,
-                        size: 28,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  center.name,
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    color: isSelected ? Colors.white : AppColors.primary,
-                                  ),
-                                ),
-                              ),
-                              if (isSelected)
-                                const Icon(Icons.check_circle, color: Colors.white, size: 24),
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.location_on,
-                                size: 14,
-                                color: isSelected ? Colors.white70 : AppColors.primary.withOpacity(0.7),
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                center.address,
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: isSelected ? Colors.white70 : AppColors.gray,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                // Benefits row
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: isSelected ? Colors.white.withOpacity(0.15) : Colors.white,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      _buildBenefit(
-                        Icons.access_time,
-                        'Save Time',
-                        isSelected,
-                      ),
-                      _buildBenefit(
-                        Icons.car_repair,
-                        'No Travel',
-                        isSelected,
-                      ),
-                      _buildBenefit(
-                        Icons.verified,
-                        'Certified',
-                        isSelected,
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 12),
-                // Price and rating row
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.star,
-                          size: 18,
-                          color: isSelected ? AppColors.accent : AppColors.accent,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          center.ratingDisplay,
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            color: isSelected ? Colors.white : AppColors.dark,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          '• ${center.emirate}',
-                          style: TextStyle(
-                            color: isSelected ? Colors.white70 : AppColors.gray,
-                          ),
-                        ),
-                      ],
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: isSelected ? Colors.white : AppColors.primary,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        center.formattedPrice,
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: isSelected ? AppColors.primary : Colors.white,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-        // RECOMMENDED badge
-        Positioned(
-          top: -10,
-          left: 16,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [AppColors.accent, Color(0xFFFF9800)],
-              ),
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.accent.withOpacity(0.4),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: const Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.star, size: 14, color: Colors.white),
-                SizedBox(width: 4),
-                Text(
-                  'RECOMMENDED',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildBenefit(IconData icon, String label, bool isSelected) {
-    return Column(
-      children: [
-        Icon(
-          icon,
-          size: 20,
-          color: isSelected ? Colors.white : AppColors.primary,
-        ),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w500,
-            color: isSelected ? Colors.white : AppColors.dark,
-          ),
-        ),
-      ],
-    );
-  }
-
-  // Regular test center option
   Widget _buildCenterOption(TestCenter center) {
     final isSelected = _selectedCenter?.id == center.id;
+    final isGreenCrescent = center.isGreenCrescent;
 
-    return InkWell(
+    return GestureDetector(
       onTap: () => setState(() => _selectedCenter = center),
-      borderRadius: BorderRadius.circular(16),
       child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: AppColors.white,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isSelected ? AppColors.primary : AppColors.border,
+            color: isSelected ? AppColors.primary : (isGreenCrescent ? AppColors.success : AppColors.border),
             width: isSelected ? 2 : 1,
           ),
         ),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: isSelected ? AppColors.primary : AppColors.secondaryLight,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(
-                Icons.location_on,
-                color: isSelected ? Colors.white : AppColors.secondary,
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(center.name, style: AppTheme.titleMd),
-                  Text(center.fullAddress, style: AppTheme.bodySm),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Icon(Icons.star, size: 14, color: AppColors.accent),
-                      const SizedBox(width: 4),
-                      Text(center.ratingDisplay, style: AppTheme.bodySm),
-                      const SizedBox(width: 12),
-                      Text(center.formattedPrice,
-                          style: AppTheme.labelLg.copyWith(color: AppColors.primary)),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            if (isSelected)
-              const Icon(Icons.check_circle, color: AppColors.primary),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // STEP 3: Select Date & Time
-  Widget _buildDateTimeStep() {
-    final isOnsite = _selectedCenter != null && _isOnsiteTest(_selectedCenter!);
-    
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('Select Date & Time', style: AppTheme.headingSm),
-        const SizedBox(height: 8),
-        Text(
-          isOnsite 
-              ? 'Choose when you want us to visit you'
-              : 'Choose your preferred appointment slot',
-          style: AppTheme.bodyMd,
-        ),
-        const SizedBox(height: 24),
-
-        // Onsite info banner
-        if (isOnsite) ...[
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: AppColors.primaryLight,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
+            Row(
               children: [
                 Container(
-                  width: 40,
-                  height: 40,
+                  width: 48, height: 48,
                   decoration: BoxDecoration(
-                    color: AppColors.primary,
-                    borderRadius: BorderRadius.circular(10),
+                    color: isGreenCrescent ? AppColors.successLight : AppColors.background,
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Icon(Icons.home_work, color: Colors.white, size: 20),
+                  child: Icon(
+                    isGreenCrescent ? Icons.home : Icons.location_on,
+                    color: isGreenCrescent ? AppColors.success : AppColors.gray,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'Onsite Test Selected',
-                        style: AppTheme.labelLg.copyWith(color: AppColors.primary),
+                      Row(
+                        children: [
+                          Expanded(child: Text(center.name, style: AppTheme.titleMd)),
+                          if (isGreenCrescent)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(color: AppColors.success, borderRadius: BorderRadius.circular(4)),
+                              child: const Text('RECOMMENDED', style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold)),
+                            ),
+                        ],
                       ),
-                      Text(
-                        'Our team will come to your location',
-                        style: AppTheme.bodySm,
-                      ),
+                      const SizedBox(height: 4),
+                      Text(center.address, style: AppTheme.bodySm),
                     ],
                   ),
                 ),
+                if (isSelected) const Icon(Icons.check_circle, color: AppColors.primary),
               ],
             ),
-          ),
-          const SizedBox(height: 20),
-        ],
-
-        // Date picker
-        Text('Date', style: AppTheme.labelLg),
-        const SizedBox(height: 12),
-        InkWell(
-          onTap: _pickDate,
-          borderRadius: BorderRadius.circular(12),
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: AppColors.white,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.border),
-            ),
-            child: Row(
+            const SizedBox(height: 12),
+            Row(
               children: [
-                const Icon(Icons.calendar_today, color: AppColors.gray),
+                _buildCenterTag(Icons.star, center.formattedRating, AppColors.warning),
                 const SizedBox(width: 12),
-                Text(
-                  _selectedDate != null
-                      ? _formatDate(_selectedDate!)
-                      : 'Select a date',
-                  style: _selectedDate != null
-                      ? AppTheme.titleMd
-                      : AppTheme.bodyMd.copyWith(color: AppColors.lightGray),
-                ),
+                _buildCenterTag(Icons.access_time, center.operatingHours, AppColors.gray),
                 const Spacer(),
-                const Icon(Icons.chevron_right, color: AppColors.gray),
+                Text(center.formattedPrice, style: AppTheme.titleMd.copyWith(color: AppColors.primary)),
               ],
             ),
-          ),
+          ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildCenterTag(IconData icon, String text, Color color) {
+    return Row(
+      children: [
+        Icon(icon, size: 14, color: color),
+        const SizedBox(width: 4),
+        Text(text, style: TextStyle(fontSize: 12, color: AppColors.gray)),
+      ],
+    );
+  }
+
+  // Step 3: Select Date & Time
+  Widget _buildSelectDateTime() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Select Date & Time', style: AppTheme.headingSm),
+        const SizedBox(height: 8),
+        Text('Pick your preferred slot', style: AppTheme.bodyMd),
         const SizedBox(height: 24),
 
-        // Time slots
-        Text(
-          isOnsite ? 'Preferred Time Window' : 'Available Time Slots',
-          style: AppTheme.labelLg,
-        ),
-        const SizedBox(height: 12),
-        Wrap(
-          spacing: 12,
-          runSpacing: 12,
-          children: _availableTimeSlots.map((slot) {
-            final isSelected = _selectedTimeSlot == slot;
-            return InkWell(
-              onTap: () => setState(() => _selectedTimeSlot = slot),
-              borderRadius: BorderRadius.circular(8),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                decoration: BoxDecoration(
-                  color: isSelected ? AppColors.primary : AppColors.white,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: isSelected ? AppColors.primary : AppColors.border,
-                  ),
-                ),
-                child: Text(
-                  slot,
-                  style: TextStyle(
-                    color: isSelected ? Colors.white : AppColors.dark,
-                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+        // Date picker
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppColors.border)),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Date', style: AppTheme.titleMd),
+              const SizedBox(height: 12),
+              InkWell(
+                onTap: _selectDate,
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(color: AppColors.background, borderRadius: BorderRadius.circular(12)),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.calendar_month, color: AppColors.primary),
+                      const SizedBox(width: 12),
+                      Text(
+                        _selectedDate != null ? _formatDate(_selectedDate!) : 'Select Date',
+                        style: AppTheme.bodyMd.copyWith(color: _selectedDate != null ? AppColors.dark : AppColors.gray),
+                      ),
+                      const Spacer(),
+                      const Icon(Icons.chevron_right, color: AppColors.lightGray),
+                    ],
                   ),
                 ),
               ),
-            );
-          }).toList(),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 20),
+
+        // Time slots
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppColors.border)),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Time Slot', style: AppTheme.titleMd),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: _timeSlots.map((slot) => _buildTimeSlotChip(slot)).toList(),
+              ),
+            ],
+          ),
         ),
       ],
     );
   }
 
-  Future<void> _pickDate() async {
-    final date = await showDatePicker(
-      context: context,
-      initialDate: _selectedDate ?? DateTime.now().add(const Duration(days: 1)),
-      firstDate: DateTime.now(),
-      lastDate: DateTime.now().add(const Duration(days: 60)),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: AppColors.primary,
-            ),
-          ),
-          child: child!,
-        );
-      },
+  Widget _buildTimeSlotChip(String slot) {
+    final isSelected = _selectedTimeSlot == slot;
+    return GestureDetector(
+      onTap: () => setState(() => _selectedTimeSlot = slot),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.primary : AppColors.background,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: isSelected ? AppColors.primary : AppColors.border),
+        ),
+        child: Text(slot, style: TextStyle(color: isSelected ? Colors.white : AppColors.dark, fontWeight: FontWeight.w500, fontSize: 13)),
+      ),
     );
+  }
 
-    if (date != null) {
-      setState(() {
-        _selectedDate = date;
-        _selectedTimeSlot = null; // Reset time when date changes
-      });
+  Future<void> _selectDate() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate ?? now.add(const Duration(days: 1)),
+      firstDate: now,
+      lastDate: now.add(const Duration(days: 60)),
+    );
+    if (picked != null) {
+      setState(() => _selectedDate = picked);
     }
   }
 
-  // STEP 4: Confirm
-  Widget _buildConfirmStep() {
-    final isOnsite = _selectedCenter != null && _isOnsiteTest(_selectedCenter!);
-    
+  // Step 4: Confirmation
+  Widget _buildConfirmation() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text('Confirm Booking', style: AppTheme.headingSm),
         const SizedBox(height: 8),
-        Text(
-          'Review your booking details',
-          style: AppTheme.bodyMd,
-        ),
+        Text('Review your booking details', style: AppTheme.bodyMd),
         const SizedBox(height: 24),
 
-        // Summary card
         Container(
           padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: AppColors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.border),
-          ),
+          decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppColors.border)),
           child: Column(
             children: [
-              _buildSummaryRow(
-                icon: Icons.directions_car,
-                label: 'Vehicle',
-                value: _selectedVehicle?.displayName ?? '',
-                subtitle: _selectedVehicle?.fullPlate,
-              ),
+              _buildConfirmRow('Vehicle', _selectedVehicle?.displayName ?? ''),
+              _buildConfirmRow('Plate', _selectedVehicle?.fullPlate ?? ''),
               const Divider(height: 24),
-              _buildSummaryRow(
-                icon: isOnsite ? Icons.home_work : Icons.location_on,
-                label: isOnsite ? 'Service Type' : 'Test Center',
-                value: _selectedCenter?.name ?? '',
-                subtitle: isOnsite ? 'Onsite - We come to you' : _selectedCenter?.address,
-                highlight: isOnsite,
-              ),
+              _buildConfirmRow('Test Center', _selectedCenter?.name ?? ''),
+              _buildConfirmRow('Address', _selectedCenter?.address ?? ''),
               const Divider(height: 24),
-              _buildSummaryRow(
-                icon: Icons.calendar_today,
-                label: 'Date & Time',
-                value: _selectedDate != null ? _formatDate(_selectedDate!) : '',
-                subtitle: _selectedTimeSlot,
-              ),
+              _buildConfirmRow('Date', _selectedDate != null ? _formatDate(_selectedDate!) : ''),
+              _buildConfirmRow('Time', _selectedTimeSlot ?? ''),
               const Divider(height: 24),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text('Total Amount', style: AppTheme.titleMd),
-                  Text(
-                    _selectedCenter?.formattedPrice ?? 'AED 120',
-                    style: AppTheme.headingSm.copyWith(color: AppColors.primary),
-                  ),
-                ],
-              ),
+              _buildConfirmRow('Price', _selectedCenter?.formattedPrice ?? '', isPrice: true),
             ],
           ),
         ),
 
-        const SizedBox(height: 16),
+        const SizedBox(height: 20),
 
-        // Info note
         Container(
           padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: isOnsite ? AppColors.primaryLight : AppColors.infoLight,
-            borderRadius: BorderRadius.circular(12),
-          ),
+          decoration: BoxDecoration(color: AppColors.primaryLight, borderRadius: BorderRadius.circular(12)),
           child: Row(
             children: [
-              Icon(
-                isOnsite ? Icons.home_work : Icons.info_outline,
-                color: isOnsite ? AppColors.primary : AppColors.info,
-              ),
+              const Icon(Icons.info_outline, color: AppColors.primary),
               const SizedBox(width: 12),
               Expanded(
-                child: Text(
-                  isOnsite
-                      ? 'Our Green Crescent team will call you to confirm your exact location before the visit.'
-                      : 'Payment will be collected at the test center. Please arrive 10 minutes before your appointment.',
-                  style: AppTheme.bodySm.copyWith(
-                    color: isOnsite ? AppColors.primary : AppColors.info,
-                  ),
-                ),
+                child: Text('Payment will be collected at the test center', style: AppTheme.bodySm.copyWith(color: AppColors.primary)),
               ),
             ],
           ),
@@ -1074,83 +542,32 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
     );
   }
 
-  Widget _buildSummaryRow({
-    required IconData icon,
-    required String label,
-    required String value,
-    String? subtitle,
-    bool highlight = false,
-  }) {
-    return Row(
-      children: [
-        Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: highlight ? AppColors.primary : AppColors.primaryLight,
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Icon(
-            icon,
-            color: highlight ? Colors.white : AppColors.primary,
-            size: 20,
-          ),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(label, style: AppTheme.bodySm),
-              Text(
-                value,
-                style: highlight 
-                    ? AppTheme.titleMd.copyWith(color: AppColors.primary)
-                    : AppTheme.titleMd,
-              ),
-              if (subtitle != null)
-                Text(subtitle, style: AppTheme.bodySm),
-            ],
-          ),
-        ),
-      ],
+  Widget _buildConfirmRow(String label, String value, {bool isPrice = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: AppTheme.bodyMd),
+          Text(value, style: isPrice ? AppTheme.titleLg.copyWith(color: AppColors.primary) : AppTheme.titleMd),
+        ],
+      ),
     );
   }
 
-  // ==========================================
-  // BOTTOM BUTTONS
-  // ==========================================
-
-  Widget _buildBottomButtons() {
+  Widget _buildButtons() {
     return Container(
       padding: const EdgeInsets.all(20),
-      decoration: const BoxDecoration(
-        color: AppColors.white,
-        border: Border(top: BorderSide(color: AppColors.border)),
-      ),
+      decoration: const BoxDecoration(color: AppColors.white, border: Border(top: BorderSide(color: AppColors.border))),
       child: Row(
         children: [
-          if (_currentStep > 0)
-            Expanded(
-              child: OutlinedButton(
-                onPressed: _isLoading ? null : _previousStep,
-                child: const Text('Back'),
-              ),
-            ),
+          if (_currentStep > 0) Expanded(child: OutlinedButton(onPressed: _isLoading ? null : _previousStep, child: const Text('Back'))),
           if (_currentStep > 0) const SizedBox(width: 16),
           Expanded(
-            flex: _currentStep == 0 ? 1 : 1,
             child: ElevatedButton(
               onPressed: _isLoading ? null : _nextStep,
               child: _isLoading
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
+                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                   : Text(_currentStep == 3 ? 'Confirm Booking' : 'Continue'),
             ),
           ),
@@ -1159,16 +576,9 @@ class _CreateBookingScreenState extends State<CreateBookingScreen> {
     );
   }
 
-  // ==========================================
-  // HELPERS
-  // ==========================================
-
   String _formatDate(DateTime date) {
-    final months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-    ];
-    final weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    return '${weekdays[date.weekday - 1]}, ${date.day} ${months[date.month - 1]} ${date.year}';
+    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    final days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    return '${days[date.weekday - 1]}, ${date.day} ${months[date.month - 1]} ${date.year}';
   }
 }

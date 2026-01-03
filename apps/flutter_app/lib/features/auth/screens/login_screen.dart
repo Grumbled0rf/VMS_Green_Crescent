@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/services/auth_service.dart';
 import '../../dashboard/screens/dashboard_screen.dart';
 import 'register_screen.dart';
+import 'forgot_password_screen.dart';
 
 // ============================================
 // LOGIN SCREEN
@@ -16,14 +18,10 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  // Form key for validation
   final _formKey = GlobalKey<FormState>();
-  
-  // Controllers
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   
-  // State
   bool _isLoading = false;
   bool _obscurePassword = true;
   bool _rememberMe = false;
@@ -40,46 +38,47 @@ class _LoginScreenState extends State<LoginScreen> {
   // ==========================================
   
   Future<void> _handleLogin() async {
-    // Validate form
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
 
-    // Simulate API call
-    await Future.delayed(const Duration(seconds: 2));
+    final result = await AuthService.signIn(
+      email: _emailController.text,
+      password: _passwordController.text,
+    );
 
     setState(() => _isLoading = false);
 
     if (!mounted) return;
 
-    // TODO: Implement real login with Supabase
-    _showSnackBar('Login successful! 🎉');
-    
-    // Navigate to Dashboard
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const DashboardScreen()),
-    );
+    if (result.isSuccess) {
+      _showSnackBar(result.message ?? 'Welcome back! 🎉', isError: false);
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const DashboardScreen()),
+      );
+    } else {
+      _showSnackBar(result.message ?? 'Login failed', isError: true);
+    }
   }
 
   Future<void> _handleGoogleLogin() async {
     setState(() => _isLoading = true);
     await Future.delayed(const Duration(seconds: 1));
     setState(() => _isLoading = false);
-    
-    _showSnackBar('Google login coming soon!');
+    _showSnackBar('Google login coming soon!', isError: false);
   }
 
   Future<void> _handleAppleLogin() async {
     setState(() => _isLoading = true);
     await Future.delayed(const Duration(seconds: 1));
     setState(() => _isLoading = false);
-    
-    _showSnackBar('Apple login coming soon!');
+    _showSnackBar('Apple login coming soon!', isError: false);
   }
 
   void _handleForgotPassword() {
-    // TODO: Navigate to forgot password screen
-    _showSnackBar('Forgot password screen coming soon!');
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const ForgotPasswordScreen()),
+    );
   }
 
   void _handleRegister() {
@@ -88,9 +87,12 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  void _showSnackBar(String message) {
+  void _showSnackBar(String message, {bool isError = false}) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
+      SnackBar(
+        content: Text(message),
+        backgroundColor: isError ? AppColors.error : AppColors.success,
+      ),
     );
   }
 
@@ -115,27 +117,16 @@ class _LoginScreenState extends State<LoginScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Logo & Header
                   _buildHeader(),
                   const SizedBox(height: 40),
-                  
-                  // Login Form
                   _buildForm(),
                   const SizedBox(height: 24),
-                  
-                  // Login Button
                   _buildLoginButton(),
                   const SizedBox(height: 24),
-                  
-                  // Divider
                   _buildDivider(),
                   const SizedBox(height: 24),
-                  
-                  // Social Login
                   _buildSocialLogin(),
                   const SizedBox(height: 32),
-                  
-                  // Register Link
                   _buildRegisterLink(),
                 ],
               ),
@@ -146,14 +137,9 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  // ==========================================
-  // HEADER
-  // ==========================================
-  
   Widget _buildHeader() {
     return Column(
       children: [
-        // Logo
         Container(
           width: 80,
           height: 80,
@@ -168,38 +154,25 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
         const SizedBox(height: 24),
-        
-        // Title
         Text(
           'Welcome Back',
-          style: AppTheme.headingMd.copyWith(
-            color: AppColors.dark,
-          ),
+          style: AppTheme.headingMd.copyWith(color: AppColors.dark),
         ),
         const SizedBox(height: 8),
-        
-        // Subtitle
         Text(
           'Sign in to manage your vehicles',
-          style: AppTheme.bodyMd.copyWith(
-            color: AppColors.gray,
-          ),
+          style: AppTheme.bodyMd.copyWith(color: AppColors.gray),
         ),
       ],
     );
   }
 
-  // ==========================================
-  // FORM
-  // ==========================================
-  
   Widget _buildForm() {
     return Form(
       key: _formKey,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Email Field
           Text('Email', style: AppTheme.labelLg),
           const SizedBox(height: 8),
           TextFormField(
@@ -223,7 +196,6 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
           const SizedBox(height: 20),
           
-          // Password Field
           Text('Password', style: AppTheme.labelLg),
           const SizedBox(height: 8),
           TextFormField(
@@ -258,11 +230,9 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
           const SizedBox(height: 16),
           
-          // Remember Me & Forgot Password Row
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              // Remember Me
               Row(
                 children: [
                   SizedBox(
@@ -272,20 +242,13 @@ class _LoginScreenState extends State<LoginScreen> {
                       value: _rememberMe,
                       onChanged: _isLoading
                           ? null
-                          : (value) {
-                              setState(() => _rememberMe = value ?? false);
-                            },
+                          : (value) => setState(() => _rememberMe = value ?? false),
                     ),
                   ),
                   const SizedBox(width: 8),
-                  Text(
-                    'Remember me',
-                    style: AppTheme.bodyMd,
-                  ),
+                  Text('Remember me', style: AppTheme.bodyMd),
                 ],
               ),
-              
-              // Forgot Password
               TextButton(
                 onPressed: _isLoading ? null : _handleForgotPassword,
                 child: const Text('Forgot Password?'),
@@ -297,10 +260,6 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  // ==========================================
-  // LOGIN BUTTON
-  // ==========================================
-  
   Widget _buildLoginButton() {
     return SizedBox(
       height: 56,
@@ -320,10 +279,6 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  // ==========================================
-  // DIVIDER
-  // ==========================================
-  
   Widget _buildDivider() {
     return Row(
       children: [
@@ -340,14 +295,9 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  // ==========================================
-  // SOCIAL LOGIN
-  // ==========================================
-  
   Widget _buildSocialLogin() {
     return Row(
       children: [
-        // Google
         Expanded(
           child: _SocialButton(
             icon: Icons.g_mobiledata_rounded,
@@ -356,8 +306,6 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
         const SizedBox(width: 16),
-        
-        // Apple
         Expanded(
           child: _SocialButton(
             icon: Icons.apple_rounded,
@@ -370,18 +318,11 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  // ==========================================
-  // REGISTER LINK
-  // ==========================================
-  
   Widget _buildRegisterLink() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Text(
-          "Don't have an account? ",
-          style: AppTheme.bodyMd,
-        ),
+        Text("Don't have an account? ", style: AppTheme.bodyMd),
         TextButton(
           onPressed: _isLoading ? null : _handleRegister,
           child: const Text('Sign Up'),
@@ -391,9 +332,6 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 }
 
-// ============================================
-// SOCIAL BUTTON WIDGET
-// ============================================
 class _SocialButton extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -416,9 +354,7 @@ class _SocialButton extends StatelessWidget {
         style: OutlinedButton.styleFrom(
           backgroundColor: isDark ? AppColors.dark : AppColors.white,
           foregroundColor: isDark ? AppColors.white : AppColors.dark,
-          side: BorderSide(
-            color: isDark ? AppColors.dark : AppColors.border,
-          ),
+          side: BorderSide(color: isDark ? AppColors.dark : AppColors.border),
           padding: const EdgeInsets.symmetric(horizontal: 16),
         ),
         child: Row(

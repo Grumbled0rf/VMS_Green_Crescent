@@ -1,38 +1,41 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'core/theme/app_theme.dart';
+import 'core/services/supabase_service.dart';
 import 'features/auth/screens/splash_screen.dart';
 
-void main() {
+// ============================================
+// MAIN ENTRY POINT
+// ============================================
+void main() async {
   // Ensure Flutter is initialized
   WidgetsFlutterBinding.ensureInitialized();
-  
-  // Set system UI style (status bar color)
-  SystemChrome.setSystemUIOverlayStyle(
-    const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.light, // Light for dark splash bg
-      statusBarBrightness: Brightness.dark,
-    ),
-  );
 
+  // Set preferred orientations
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+  ]);
+
+  // Initialize Supabase
+  await SupabaseService.initialize();
+
+  // Run the app
   runApp(const VMSApp());
 }
 
+// ============================================
+// VMS APP
+// ============================================
 class VMSApp extends StatelessWidget {
   const VMSApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      // App info
       title: 'VMS Platform',
       debugShowCheckedModeBanner: false,
-      
-      // Theme
       theme: AppTheme.lightTheme,
-      
-      // Start with Splash Screen → Login Screen
       home: const SplashScreen(),
     );
   }

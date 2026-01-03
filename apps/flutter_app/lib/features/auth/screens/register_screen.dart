@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/gestures.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/services/auth_service.dart';
 import 'login_screen.dart';
 
 // ============================================
 // REGISTER SCREEN
-// Sign up form with full validation
+// Full registration with validation
 // ============================================
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -16,17 +16,13 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
-  // Form key for validation
   final _formKey = GlobalKey<FormState>();
-  
-  // Controllers
-  final _fullNameController = TextEditingController();
+  final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
-  
-  // State
+
   bool _isLoading = false;
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
@@ -34,7 +30,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   void dispose() {
-    _fullNameController.dispose();
+    _nameController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
     _passwordController.dispose();
@@ -45,46 +41,95 @@ class _RegisterScreenState extends State<RegisterScreen> {
   // ==========================================
   // ACTIONS
   // ==========================================
-  
+
   Future<void> _handleRegister() async {
-    // Validate form
     if (!_formKey.currentState!.validate()) return;
 
-    // Check terms agreement
     if (!_agreeToTerms) {
-      _showSnackBar('Please agree to Terms & Conditions', isError: true);
+      _showSnackBar('Please agree to the Terms & Conditions', isError: true);
       return;
     }
 
     setState(() => _isLoading = true);
 
-    // Simulate API call
-    await Future.delayed(const Duration(seconds: 2));
+    final result = await AuthService.signUp(
+      email: _emailController.text,
+      password: _passwordController.text,
+      fullName: _nameController.text,
+      phone: _phoneController.text.isNotEmpty ? _phoneController.text : null,
+    );
 
     setState(() => _isLoading = false);
 
     if (!mounted) return;
 
-    // TODO: Implement real registration with Supabase
-    _showSnackBar('Account created successfully! 🎉');
-    
-    // Navigate to login
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const LoginScreen()),
-    );
+    if (result.isSuccess) {
+      if (result.requiresVerification) {
+        _showVerificationDialog();
+      } else {
+        _showSnackBar(result.message ?? 'Account created! 🎉', isError: false);
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const LoginScreen()),
+        );
+      }
+    } else {
+      _showSnackBar(result.message ?? 'Registration failed', isError: true);
+    }
   }
 
-  void _showSnackBar(String message, {bool isError = false}) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: isError ? AppColors.error : null,
+  void _showVerificationDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 80,
+              height: 80,
+              decoration: const BoxDecoration(
+                color: AppColors.infoLight,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.email_outlined,
+                color: AppColors.info,
+                size: 40,
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text('Verify Your Email', style: AppTheme.headingSm),
+            const SizedBox(height: 12),
+            Text(
+              'We\'ve sent a verification link to\n${_emailController.text}',
+              style: AppTheme.bodyMd,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Please check your inbox and click the link to verify your account.',
+              style: AppTheme.bodySm,
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+        actions: [
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(builder: (_) => const LoginScreen()),
+                );
+              },
+              child: const Text('Go to Login'),
+            ),
+          ),
+        ],
       ),
     );
-  }
-
-  void _navigateToLogin() {
-    Navigator.of(context).pop();
   }
 
   void _showTermsDialog() {
@@ -92,15 +137,38 @@ class _RegisterScreenState extends State<RegisterScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Terms & Conditions'),
-        content: const SingleChildScrollView(
-          child: Text(
-            'Welcome to VMS Platform!\n\n'
-            '1. By using this app, you agree to our terms of service.\n\n'
-            '2. Your vehicle data is securely stored and protected.\n\n'
-            '3. We will send you reminders for upcoming emission tests.\n\n'
-            '4. You are responsible for maintaining accurate vehicle information.\n\n'
-            '5. Booking cancellations must be made 24 hours in advance.\n\n'
-            'For full terms, please visit our website.',
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('1. Acceptance of Terms', style: AppTheme.titleMd),
+              const SizedBox(height: 8),
+              const Text(
+                'By using VMS Platform, you agree to these terms and conditions. '
+                'This service is provided for vehicle management and emission test booking.',
+              ),
+              const SizedBox(height: 16),
+              Text('2. User Responsibilities', style: AppTheme.titleMd),
+              const SizedBox(height: 8),
+              const Text(
+                'Users must provide accurate vehicle information and maintain valid '
+                'emission certificates as required by UAE law.',
+              ),
+              const SizedBox(height: 16),
+              Text('3. Privacy', style: AppTheme.titleMd),
+              const SizedBox(height: 8),
+              const Text(
+                'We collect and process personal data in accordance with UAE data '
+                'protection regulations. Your information is kept secure.',
+              ),
+              const SizedBox(height: 16),
+              Text('4. Booking Policy', style: AppTheme.titleMd),
+              const SizedBox(height: 8),
+              const Text(
+                'Bookings can be cancelled up to 24 hours before the appointment. '
+                'Payment is collected at the test center.',
+              ),
+            ],
           ),
         ),
         actions: [
@@ -120,54 +188,49 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
+  void _showSnackBar(String message, {bool isError = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: isError ? AppColors.error : AppColors.success,
+      ),
+    );
+  }
+
   // ==========================================
   // BUILD
   // ==========================================
-  
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
+        title: const Text('Create Account'),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: _navigateToLogin,
-        ),
       ),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
             padding: EdgeInsets.symmetric(
               horizontal: AppTheme.isMobile(context) ? 24 : 40,
-              vertical: 16,
+              vertical: 24,
             ),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 400),
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Header
                   _buildHeader(),
                   const SizedBox(height: 32),
-                  
-                  // Form
                   _buildForm(),
                   const SizedBox(height: 24),
-                  
-                  // Terms & Conditions
                   _buildTermsCheckbox(),
                   const SizedBox(height: 24),
-                  
-                  // Register Button
                   _buildRegisterButton(),
                   const SizedBox(height: 24),
-                  
-                  // Login Link
                   _buildLoginLink(),
-                  const SizedBox(height: 16),
                 ],
               ),
             ),
@@ -177,54 +240,23 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
-  // ==========================================
-  // HEADER
-  // ==========================================
-  
   Widget _buildHeader() {
     return Column(
       children: [
-        // Icon
-        Container(
-          width: 72,
-          height: 72,
-          decoration: BoxDecoration(
-            color: AppColors.primaryLight,
-            borderRadius: BorderRadius.circular(18),
-          ),
-          child: const Icon(
-            Icons.person_add_rounded,
-            size: 36,
-            color: AppColors.primary,
-          ),
-        ),
-        const SizedBox(height: 24),
-        
-        // Title
         Text(
-          'Create Account',
-          style: AppTheme.headingMd.copyWith(
-            color: AppColors.dark,
-          ),
+          'Join VMS Platform',
+          style: AppTheme.headingMd.copyWith(color: AppColors.dark),
         ),
         const SizedBox(height: 8),
-        
-        // Subtitle
         Text(
-          'Sign up to start managing your vehicles',
-          style: AppTheme.bodyMd.copyWith(
-            color: AppColors.gray,
-          ),
+          'Create an account to manage your vehicles',
+          style: AppTheme.bodyMd.copyWith(color: AppColors.gray),
           textAlign: TextAlign.center,
         ),
       ],
     );
   }
 
-  // ==========================================
-  // FORM
-  // ==========================================
-  
   Widget _buildForm() {
     return Form(
       key: _formKey,
@@ -235,27 +267,26 @@ class _RegisterScreenState extends State<RegisterScreen> {
           Text('Full Name', style: AppTheme.labelLg),
           const SizedBox(height: 8),
           TextFormField(
-            controller: _fullNameController,
-            keyboardType: TextInputType.name,
-            textInputAction: TextInputAction.next,
+            controller: _nameController,
             textCapitalization: TextCapitalization.words,
+            textInputAction: TextInputAction.next,
             enabled: !_isLoading,
             decoration: const InputDecoration(
               hintText: 'Enter your full name',
               prefixIcon: Icon(Icons.person_outlined),
             ),
             validator: (value) {
-              if (value == null || value.isEmpty) {
+              if (value == null || value.trim().isEmpty) {
                 return 'Please enter your name';
               }
               if (value.trim().length < 2) {
-                return 'Name must be at least 2 characters';
+                return 'Name is too short';
               }
               return null;
             },
           ),
           const SizedBox(height: 20),
-          
+
           // Email
           Text('Email', style: AppTheme.labelLg),
           const SizedBox(height: 8),
@@ -279,9 +310,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
             },
           ),
           const SizedBox(height: 20),
-          
-          // Phone Number (UAE)
-          Text('Phone Number', style: AppTheme.labelLg),
+
+          // Phone
+          Text('Phone Number (Optional)', style: AppTheme.labelLg),
           const SizedBox(height: 8),
           TextFormField(
             controller: _phoneController,
@@ -289,24 +320,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
             textInputAction: TextInputAction.next,
             enabled: !_isLoading,
             decoration: const InputDecoration(
-              hintText: '50 123 4567',
+              hintText: '+971 50 123 4567',
               prefixIcon: Icon(Icons.phone_outlined),
-              prefixText: '+971 ',
             ),
             validator: (value) {
-              if (value == null || value.isEmpty) {
-                return 'Please enter your phone number';
-              }
-              // Remove spaces and check length
-              final cleanNumber = value.replaceAll(' ', '');
-              if (cleanNumber.length < 9) {
-                return 'Please enter a valid UAE phone number';
+              if (value != null && value.isNotEmpty && value.length < 9) {
+                return 'Please enter a valid phone number';
               }
               return null;
             },
           ),
           const SizedBox(height: 20),
-          
+
           // Password
           Text('Password', style: AppTheme.labelLg),
           const SizedBox(height: 8),
@@ -320,14 +345,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
               prefixIcon: const Icon(Icons.lock_outlined),
               suffixIcon: IconButton(
                 icon: Icon(
-                  _obscurePassword 
-                      ? Icons.visibility_outlined 
+                  _obscurePassword
+                      ? Icons.visibility_outlined
                       : Icons.visibility_off_outlined,
                 ),
                 onPressed: () {
                   setState(() => _obscurePassword = !_obscurePassword);
                 },
               ),
+              helperText: 'At least 6 characters with 1 number',
             ),
             validator: (value) {
               if (value == null || value.isEmpty) {
@@ -336,20 +362,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
               if (value.length < 6) {
                 return 'Password must be at least 6 characters';
               }
-              if (!value.contains(RegExp(r'[0-9]'))) {
-                return 'Password must contain at least one number';
+              if (!RegExp(r'[0-9]').hasMatch(value)) {
+                return 'Password must contain at least 1 number';
               }
               return null;
             },
           ),
-          const SizedBox(height: 8),
-          // Password requirements hint
-          Text(
-            '• At least 6 characters  • At least 1 number',
-            style: AppTheme.bodySm.copyWith(color: AppColors.lightGray),
-          ),
           const SizedBox(height: 20),
-          
+
           // Confirm Password
           Text('Confirm Password', style: AppTheme.labelLg),
           const SizedBox(height: 8),
@@ -364,8 +384,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
               prefixIcon: const Icon(Icons.lock_outlined),
               suffixIcon: IconButton(
                 icon: Icon(
-                  _obscureConfirmPassword 
-                      ? Icons.visibility_outlined 
+                  _obscureConfirmPassword
+                      ? Icons.visibility_outlined
                       : Icons.visibility_off_outlined,
                 ),
                 onPressed: () {
@@ -388,10 +408,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
-  // ==========================================
-  // TERMS CHECKBOX
-  // ==========================================
-  
   Widget _buildTermsCheckbox() {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -403,38 +419,35 @@ class _RegisterScreenState extends State<RegisterScreen> {
             value: _agreeToTerms,
             onChanged: _isLoading
                 ? null
-                : (value) {
-                    setState(() => _agreeToTerms = value ?? false);
-                  },
+                : (value) => setState(() => _agreeToTerms = value ?? false),
           ),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: 8),
         Expanded(
-          child: RichText(
-            text: TextSpan(
-              style: AppTheme.bodyMd.copyWith(color: AppColors.gray),
-              children: [
-                const TextSpan(text: 'I agree to the '),
-                TextSpan(
-                  text: 'Terms & Conditions',
-                  style: const TextStyle(
-                    color: AppColors.primary,
-                    fontWeight: FontWeight.w600,
+          child: GestureDetector(
+            onTap: _showTermsDialog,
+            child: RichText(
+              text: TextSpan(
+                style: AppTheme.bodyMd.copyWith(color: AppColors.dark),
+                children: [
+                  const TextSpan(text: 'I agree to the '),
+                  TextSpan(
+                    text: 'Terms & Conditions',
+                    style: TextStyle(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
-                  recognizer: TapGestureRecognizer()
-                    ..onTap = _showTermsDialog,
-                ),
-                const TextSpan(text: ' and '),
-                TextSpan(
-                  text: 'Privacy Policy',
-                  style: const TextStyle(
-                    color: AppColors.primary,
-                    fontWeight: FontWeight.w600,
+                  const TextSpan(text: ' and '),
+                  TextSpan(
+                    text: 'Privacy Policy',
+                    style: TextStyle(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
-                  recognizer: TapGestureRecognizer()
-                    ..onTap = _showTermsDialog,
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -442,10 +455,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
-  // ==========================================
-  // REGISTER BUTTON
-  // ==========================================
-  
   Widget _buildRegisterButton() {
     return SizedBox(
       height: 56,
@@ -465,20 +474,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
-  // ==========================================
-  // LOGIN LINK
-  // ==========================================
-  
   Widget _buildLoginLink() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Text(
-          'Already have an account? ',
-          style: AppTheme.bodyMd,
-        ),
+        Text('Already have an account? ', style: AppTheme.bodyMd),
         TextButton(
-          onPressed: _isLoading ? null : _navigateToLogin,
+          onPressed: _isLoading
+              ? null
+              : () => Navigator.of(context).pop(),
           child: const Text('Sign In'),
         ),
       ],

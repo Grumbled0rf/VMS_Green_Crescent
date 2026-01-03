@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/services/supabase_service.dart';
+import '../../dashboard/screens/dashboard_screen.dart';
 import 'login_screen.dart';
 
 // ============================================
 // SPLASH SCREEN
-// Shows when app starts, then navigates to Login
+// Animated intro + Auth state check
 // ============================================
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -15,13 +17,10 @@ class SplashScreen extends StatefulWidget {
 
 class _SplashScreenState extends State<SplashScreen>
     with TickerProviderStateMixin {
-  
-  // Animation controllers
   late AnimationController _logoController;
   late AnimationController _textController;
   late AnimationController _loadingController;
 
-  // Animations
   late Animation<double> _logoScale;
   late Animation<double> _logoOpacity;
   late Animation<double> _textOpacity;
@@ -35,57 +34,45 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   void _setupAnimations() {
-    // Logo animation controller (0-800ms)
+    // Logo animation controller (0 - 800ms)
     _logoController = AnimationController(
       duration: const Duration(milliseconds: 800),
       vsync: this,
     );
 
-    // Text animation controller (400-1000ms)
+    // Text animation controller (400ms - 1000ms)
     _textController = AnimationController(
       duration: const Duration(milliseconds: 600),
       vsync: this,
     );
 
-    // Loading animation controller (continuous)
+    // Loading spinner controller
     _loadingController = AnimationController(
       duration: const Duration(milliseconds: 1500),
       vsync: this,
     );
 
-    // Logo scale: 0.5 -> 1.0 with bounce
+    // Logo scale: 0.5 -> 1.0 with elastic bounce
     _logoScale = Tween<double>(begin: 0.5, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _logoController,
-        curve: Curves.elasticOut,
-      ),
+      CurvedAnimation(parent: _logoController, curve: Curves.elasticOut),
     );
 
     // Logo opacity: 0 -> 1
     _logoOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _logoController,
-        curve: const Interval(0.0, 0.5, curve: Curves.easeIn),
-      ),
+      CurvedAnimation(parent: _logoController, curve: Curves.easeOut),
     );
 
     // Text opacity: 0 -> 1
     _textOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _textController,
-        curve: Curves.easeIn,
-      ),
+      CurvedAnimation(parent: _textController, curve: Curves.easeOut),
     );
 
     // Text slide: from bottom
     _textSlide = Tween<Offset>(
-      begin: const Offset(0, 0.3),
+      begin: const Offset(0, 0.5),
       end: Offset.zero,
     ).animate(
-      CurvedAnimation(
-        parent: _textController,
-        curve: Curves.easeOut,
-      ),
+      CurvedAnimation(parent: _textController, curve: Curves.easeOut),
     );
   }
 
@@ -97,7 +84,7 @@ class _SplashScreenState extends State<SplashScreen>
     await Future.delayed(const Duration(milliseconds: 400));
     _textController.forward();
 
-    // Start loading animation after 800ms
+    // Start loading spinner after 800ms
     await Future.delayed(const Duration(milliseconds: 400));
     _loadingController.repeat();
 
@@ -109,19 +96,15 @@ class _SplashScreenState extends State<SplashScreen>
   void _navigateToNextScreen() {
     if (!mounted) return;
 
-    // TODO: Check if user is logged in with Supabase
-    // For now, always go to Login screen
-    
+    // Check if user is already logged in
+    final isLoggedIn = SupabaseService.isLoggedIn;
+
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) {
-          return const LoginScreen();
-        },
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            isLoggedIn ? const DashboardScreen() : const LoginScreen(),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
-          return FadeTransition(
-            opacity: animation,
-            child: child,
-          );
+          return FadeTransition(opacity: animation, child: child);
         },
         transitionDuration: const Duration(milliseconds: 500),
       ),
@@ -142,164 +125,145 @@ class _SplashScreenState extends State<SplashScreen>
       body: Container(
         width: double.infinity,
         height: double.infinity,
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              AppColors.primary,
-              AppColors.primaryDark,
-            ],
-          ),
+        decoration: BoxDecoration(
+          gradient: AppColors.primaryGradient,
         ),
         child: SafeArea(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               const Spacer(flex: 2),
-              
-              // Logo
-              _buildLogo(),
-              const SizedBox(height: 24),
-              
-              // App Name
-              _buildAppName(),
-              const SizedBox(height: 8),
-              
-              // Tagline
-              _buildTagline(),
-              
+
+              // Animated Logo
+              AnimatedBuilder(
+                animation: _logoController,
+                builder: (context, child) {
+                  return Opacity(
+                    opacity: _logoOpacity.value,
+                    child: Transform.scale(
+                      scale: _logoScale.value,
+                      child: child,
+                    ),
+                  );
+                },
+                child: Container(
+                  width: 120,
+                  height: 120,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(30),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.2),
+                        blurRadius: 20,
+                        offset: const Offset(0, 10),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.directions_car_rounded,
+                    size: 60,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 32),
+
+              // Animated Text
+              AnimatedBuilder(
+                animation: _textController,
+                builder: (context, child) {
+                  return Opacity(
+                    opacity: _textOpacity.value,
+                    child: SlideTransition(
+                      position: _textSlide,
+                      child: child,
+                    ),
+                  );
+                },
+                child: Column(
+                  children: [
+                    const Text(
+                      'VMS',
+                      style: TextStyle(
+                        fontSize: 48,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                        letterSpacing: 4,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Vehicle Management System',
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.white.withOpacity(0.9),
+                        letterSpacing: 1,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
               const Spacer(flex: 2),
-              
-              // Loading indicator
-              _buildLoadingIndicator(),
-              const SizedBox(height: 48),
-              
+
+              // Loading Spinner
+              AnimatedBuilder(
+                animation: _loadingController,
+                builder: (context, child) {
+                  return Opacity(
+                    opacity: _loadingController.value > 0 ? 1.0 : 0.0,
+                    child: RotationTransition(
+                      turns: _loadingController,
+                      child: child,
+                    ),
+                  );
+                },
+                child: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: Colors.white.withOpacity(0.3),
+                      width: 3,
+                    ),
+                  ),
+                  child: Container(
+                    margin: const EdgeInsets.all(3),
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: SweepGradient(
+                        colors: [Colors.transparent, Colors.white],
+                        stops: [0.7, 1.0],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+
+              const Spacer(),
+
               // Version
-              _buildVersion(),
-              const SizedBox(height: 24),
+              AnimatedBuilder(
+                animation: _textController,
+                builder: (context, child) {
+                  return Opacity(
+                    opacity: _textOpacity.value,
+                    child: child,
+                  );
+                },
+                child: Text(
+                  'Version 1.0.0',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.white.withOpacity(0.6),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 32),
             ],
           ),
-        ),
-      ),
-    );
-  }
-
-  // ==========================================
-  // LOGO
-  // ==========================================
-  Widget _buildLogo() {
-    return AnimatedBuilder(
-      animation: _logoController,
-      builder: (context, child) {
-        return Opacity(
-          opacity: _logoOpacity.value,
-          child: Transform.scale(
-            scale: _logoScale.value,
-            child: child,
-          ),
-        );
-      },
-      child: Container(
-        width: 120,
-        height: 120,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(32),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.2),
-              blurRadius: 30,
-              offset: const Offset(0, 15),
-            ),
-          ],
-        ),
-        child: const Center(
-          child: Icon(
-            Icons.directions_car_rounded,
-            size: 64,
-            color: AppColors.primary,
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ==========================================
-  // APP NAME
-  // ==========================================
-  Widget _buildAppName() {
-    return SlideTransition(
-      position: _textSlide,
-      child: FadeTransition(
-        opacity: _textOpacity,
-        child: const Text(
-          'VMS',
-          style: TextStyle(
-            fontSize: 48,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-            letterSpacing: 8,
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ==========================================
-  // TAGLINE
-  // ==========================================
-  Widget _buildTagline() {
-    return SlideTransition(
-      position: _textSlide,
-      child: FadeTransition(
-        opacity: _textOpacity,
-        child: Text(
-          'Vehicle Management System',
-          style: TextStyle(
-            fontSize: 16,
-            color: Colors.white.withOpacity(0.9),
-            letterSpacing: 1,
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ==========================================
-  // LOADING INDICATOR
-  // ==========================================
-  Widget _buildLoadingIndicator() {
-    return AnimatedBuilder(
-      animation: _loadingController,
-      builder: (context, child) {
-        return Opacity(
-          opacity: _loadingController.isAnimating ? 1.0 : 0.0,
-          child: child,
-        );
-      },
-      child: const SizedBox(
-        width: 32,
-        height: 32,
-        child: CircularProgressIndicator(
-          color: Colors.white,
-          strokeWidth: 3,
-        ),
-      ),
-    );
-  }
-
-  // ==========================================
-  // VERSION
-  // ==========================================
-  Widget _buildVersion() {
-    return FadeTransition(
-      opacity: _textOpacity,
-      child: Text(
-        'Version 1.0.0',
-        style: TextStyle(
-          fontSize: 12,
-          color: Colors.white.withOpacity(0.6),
         ),
       ),
     );
