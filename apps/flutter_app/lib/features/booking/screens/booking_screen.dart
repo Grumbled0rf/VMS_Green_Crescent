@@ -22,6 +22,15 @@ class _BookingScreenState extends State<BookingScreen> with SingleTickerProvider
   bool _isLoading = true;
   String? _error;
 
+  // Theme helpers
+  bool get _isDark => Theme.of(context).brightness == Brightness.dark;
+  Color get _bgColor => _isDark ? AppColors.darkBackground : AppColors.background;
+  Color get _cardColor => _isDark ? AppColors.darkCard : AppColors.white;
+  Color get _borderColor => _isDark ? AppColors.darkBorder : AppColors.border;
+  Color get _textPrimary => _isDark ? AppColors.darkTextPrimary : AppColors.dark;
+  Color get _textSecondary => _isDark ? AppColors.darkTextSecondary : AppColors.gray;
+  Color get _primaryColor => _isDark ? AppColors.darkPrimary : AppColors.primary;
+
   @override
   void initState() {
     super.initState();
@@ -44,12 +53,8 @@ class _BookingScreenState extends State<BookingScreen> with SingleTickerProvider
     if (mounted) {
       setState(() {
         _isLoading = false;
-        if (upcomingResult.isSuccess) {
-          _upcomingBookings = upcomingResult.data ?? [];
-        }
-        if (pastResult.isSuccess) {
-          _pastBookings = pastResult.data ?? [];
-        }
+        if (upcomingResult.isSuccess) _upcomingBookings = upcomingResult.data ?? [];
+        if (pastResult.isSuccess) _pastBookings = pastResult.data ?? [];
         if (!upcomingResult.isSuccess && !pastResult.isSuccess) {
           _error = upcomingResult.message ?? pastResult.message;
         }
@@ -81,8 +86,9 @@ class _BookingScreenState extends State<BookingScreen> with SingleTickerProvider
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Cancel Booking'),
-        content: Text('Are you sure you want to cancel the booking for ${booking.vehicleName}?'),
+        backgroundColor: _cardColor,
+        title: Text('Cancel Booking', style: TextStyle(color: _textPrimary)),
+        content: Text('Are you sure you want to cancel this booking?', style: TextStyle(color: _textSecondary)),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('No')),
           ElevatedButton(
@@ -98,17 +104,7 @@ class _BookingScreenState extends State<BookingScreen> with SingleTickerProvider
       final result = await BookingService.cancel(booking.id!);
       if (result.isSuccess) {
         _loadBookings();
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Booking cancelled')),
-          );
-        }
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(result.message ?? 'Failed to cancel')),
-          );
-        }
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Booking cancelled')));
       }
     }
   }
@@ -116,12 +112,11 @@ class _BookingScreenState extends State<BookingScreen> with SingleTickerProvider
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: _bgColor,
       appBar: AppBar(
-        title: const Text('Bookings'),
+        title: Text('Bookings', style: TextStyle(color: _textPrimary)),
         automaticallyImplyLeading: false,
-        actions: [
-          IconButton(icon: const Icon(Icons.refresh), onPressed: _loadBookings),
-        ],
+        actions: [IconButton(icon: Icon(Icons.refresh, color: _textPrimary), onPressed: _loadBookings)],
         bottom: TabBar(
           controller: _tabController,
           tabs: [
@@ -156,7 +151,7 @@ class _BookingScreenState extends State<BookingScreen> with SingleTickerProvider
         children: [
           const Icon(Icons.error_outline, size: 48, color: AppColors.error),
           const SizedBox(height: 16),
-          Text(_error ?? 'An error occurred', style: AppTheme.titleMd),
+          Text(_error ?? 'An error occurred', style: AppTheme.titleMd.copyWith(color: _textPrimary)),
           const SizedBox(height: 16),
           ElevatedButton.icon(onPressed: _loadBookings, icon: const Icon(Icons.refresh), label: const Text('Retry')),
         ],
@@ -165,9 +160,7 @@ class _BookingScreenState extends State<BookingScreen> with SingleTickerProvider
   }
 
   Widget _buildBookingsList(List<Booking> bookings, {required bool isUpcoming}) {
-    if (bookings.isEmpty) {
-      return _buildEmptyState(isUpcoming);
-    }
+    if (bookings.isEmpty) return _buildEmptyState(isUpcoming);
 
     return RefreshIndicator(
       onRefresh: _loadBookings,
@@ -189,13 +182,13 @@ class _BookingScreenState extends State<BookingScreen> with SingleTickerProvider
         children: [
           Container(
             width: 80, height: 80,
-            decoration: BoxDecoration(color: AppColors.background, borderRadius: BorderRadius.circular(20)),
-            child: const Icon(Icons.calendar_today_outlined, size: 40, color: AppColors.lightGray),
+            decoration: BoxDecoration(color: _cardColor, borderRadius: BorderRadius.circular(20)),
+            child: Icon(Icons.calendar_today_outlined, size: 40, color: _textSecondary),
           ),
           const SizedBox(height: 16),
-          Text(isUpcoming ? 'No upcoming bookings' : 'No past bookings', style: AppTheme.titleMd),
+          Text(isUpcoming ? 'No upcoming bookings' : 'No past bookings', style: AppTheme.titleMd.copyWith(color: _textPrimary)),
           const SizedBox(height: 8),
-          Text(isUpcoming ? 'Book a test for your vehicle' : 'Your booking history will appear here', style: AppTheme.bodyMd),
+          Text(isUpcoming ? 'Book a test for your vehicle' : 'Your booking history will appear here', style: AppTheme.bodyMd.copyWith(color: _textSecondary)),
           if (isUpcoming) ...[
             const SizedBox(height: 16),
             ElevatedButton.icon(onPressed: _navigateToCreateBooking, icon: const Icon(Icons.add), label: const Text('Book Now')),
@@ -209,14 +202,13 @@ class _BookingScreenState extends State<BookingScreen> with SingleTickerProvider
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: _cardColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: _borderColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header row
           Row(
             children: [
               Container(
@@ -232,8 +224,8 @@ class _BookingScreenState extends State<BookingScreen> with SingleTickerProvider
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(booking.vehicleName ?? 'Vehicle', style: AppTheme.titleMd),
-                    Text(booking.vehiclePlate ?? '', style: AppTheme.bodySm),
+                    Text(booking.vehicleName ?? 'Vehicle', style: AppTheme.titleMd.copyWith(color: _textPrimary)),
+                    Text(booking.vehiclePlate ?? '', style: AppTheme.bodySm.copyWith(color: _textSecondary)),
                   ],
                 ),
               ),
@@ -241,10 +233,8 @@ class _BookingScreenState extends State<BookingScreen> with SingleTickerProvider
             ],
           ),
           const SizedBox(height: 16),
-          const Divider(height: 1),
+          Divider(height: 1, color: _borderColor),
           const SizedBox(height: 16),
-
-          // Details
           _buildDetailRow(Icons.location_on_outlined, booking.testCenterName ?? 'Test Center'),
           const SizedBox(height: 8),
           _buildDetailRow(Icons.calendar_month, booking.formattedDate),
@@ -254,24 +244,20 @@ class _BookingScreenState extends State<BookingScreen> with SingleTickerProvider
             const SizedBox(height: 8),
             _buildDetailRow(Icons.confirmation_number, booking.confirmationCode!),
           ],
-
-          // Price
           if (booking.price != null) ...[
             const SizedBox(height: 16),
             Container(
               padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(color: AppColors.background, borderRadius: BorderRadius.circular(8)),
+              decoration: BoxDecoration(color: _bgColor, borderRadius: BorderRadius.circular(8)),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('Total', style: AppTheme.bodyMd),
-                  Text('AED ${booking.price!.toStringAsFixed(0)}', style: AppTheme.titleMd.copyWith(color: AppColors.primary)),
+                  Text('Total', style: AppTheme.bodyMd.copyWith(color: _textSecondary)),
+                  Text('AED ${booking.price!.toStringAsFixed(0)}', style: AppTheme.titleMd.copyWith(color: _primaryColor)),
                 ],
               ),
             ),
           ],
-
-          // Actions for upcoming bookings
           if (isUpcoming && !booking.isCancelled) ...[
             const SizedBox(height: 16),
             Row(
@@ -301,9 +287,9 @@ class _BookingScreenState extends State<BookingScreen> with SingleTickerProvider
   Widget _buildDetailRow(IconData icon, String text) {
     return Row(
       children: [
-        Icon(icon, size: 18, color: AppColors.gray),
+        Icon(icon, size: 18, color: _textSecondary),
         const SizedBox(width: 8),
-        Expanded(child: Text(text, style: AppTheme.bodyMd)),
+        Expanded(child: Text(text, style: AppTheme.bodyMd.copyWith(color: _textPrimary))),
       ],
     );
   }
@@ -321,10 +307,10 @@ class _BookingScreenState extends State<BookingScreen> with SingleTickerProvider
   Color _getStatusColor(String status) {
     switch (status) {
       case 'pending': return AppColors.warning;
-      case 'confirmed': return AppColors.primary;
+      case 'confirmed': return _primaryColor;
       case 'completed': return AppColors.success;
       case 'cancelled': return AppColors.error;
-      default: return AppColors.gray;
+      default: return _textSecondary;
     }
   }
 }

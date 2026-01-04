@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/services/auth_service.dart';
 import '../../../core/services/vehicle_service.dart';
+import '../../../core/services/auth_service.dart';
 import '../../../shared/models/vehicle.dart';
 import '../../auth/screens/login_screen.dart';
 import '../../vehicles/screens/add_vehicle_screen.dart';
@@ -23,6 +23,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
   List<Vehicle> _vehicles = [];
   bool _isLoading = true;
   String? _error;
+
+  // Theme helpers
+  bool get _isDark => Theme.of(context).brightness == Brightness.dark;
+  Color get _bgColor => _isDark ? AppColors.darkBackground : AppColors.background;
+  Color get _cardColor => _isDark ? AppColors.darkCard : AppColors.white;
+  Color get _borderColor => _isDark ? AppColors.darkBorder : AppColors.border;
+  Color get _textPrimary => _isDark ? AppColors.darkTextPrimary : AppColors.dark;
+  Color get _textSecondary => _isDark ? AppColors.darkTextSecondary : AppColors.gray;
+  Color get _primaryColor => _isDark ? AppColors.darkPrimary : AppColors.primary;
+  Color get _primaryLight => _isDark ? AppColors.darkPrimaryLight : AppColors.primaryLight;
 
   @override
   void initState() {
@@ -77,21 +87,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final result = await Navigator.of(context).push<bool>(
       MaterialPageRoute(builder: (_) => const EditProfileScreen()),
     );
-    if (result == true) {
-      setState(() {}); // Refresh to show updated name
-    }
+    if (result == true) setState(() {});
   }
 
   void _navigateToSettings() {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const SettingsScreen()),
-    );
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SettingsScreen()));
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: _bgColor,
       body: _buildBody(),
       bottomNavigationBar: _buildBottomNav(),
       floatingActionButton: (_currentIndex == 0 || _currentIndex == 1)
@@ -146,6 +152,49 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+  Widget _buildSliverAppBar() {
+    return SliverAppBar(
+      floating: true,
+      snap: true,
+      backgroundColor: _cardColor,
+      elevation: 0,
+      title: Row(
+        children: [
+          Container(
+            width: 40, height: 40,
+            decoration: BoxDecoration(color: _primaryLight, borderRadius: BorderRadius.circular(10)),
+            child: Icon(Icons.directions_car, color: _primaryColor, size: 22),
+          ),
+          const SizedBox(width: 12),
+          Text('VMS', style: TextStyle(fontWeight: FontWeight.bold, color: _textPrimary)),
+        ],
+      ),
+      actions: [
+        IconButton(
+          icon: Badge(smallSize: 8, child: Icon(Icons.notifications_outlined, color: _textPrimary)),
+          onPressed: () => _showSnackBar('Notifications coming soon!'),
+        ),
+        const SizedBox(width: 8),
+      ],
+    );
+  }
+
+  Widget _buildWelcomeSection() {
+    final hour = DateTime.now().hour;
+    final greeting = hour < 12 ? 'Good Morning' : hour < 17 ? 'Good Afternoon' : 'Good Evening';
+    final userName = AuthService.userFullName ?? 'User';
+    final firstName = userName.split(' ').first;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('$greeting, $firstName! 👋', style: AppTheme.headingMd.copyWith(color: _textPrimary)),
+        const SizedBox(height: 4),
+        Text('Manage your vehicles and bookings', style: AppTheme.bodyMd.copyWith(color: _textSecondary)),
+      ],
+    );
+  }
+
   Widget _buildErrorState() {
     return Container(
       padding: const EdgeInsets.all(32),
@@ -154,7 +203,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         children: [
           const Icon(Icons.error_outline, size: 48, color: AppColors.error),
           const SizedBox(height: 16),
-          Text(_error ?? 'An error occurred', style: AppTheme.titleMd),
+          Text(_error ?? 'An error occurred', style: AppTheme.titleMd.copyWith(color: _textPrimary)),
           const SizedBox(height: 16),
           ElevatedButton.icon(onPressed: _loadVehicles, icon: const Icon(Icons.refresh), label: const Text('Retry')),
         ],
@@ -164,12 +213,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Widget _buildVehiclesTab() {
     return Scaffold(
+      backgroundColor: _bgColor,
       appBar: AppBar(
-        title: const Text('My Vehicles'),
+        title: Text('My Vehicles', style: TextStyle(color: _textPrimary)),
+        backgroundColor: _cardColor,
         automaticallyImplyLeading: false,
         actions: [
-          IconButton(icon: const Icon(Icons.refresh), onPressed: _loadVehicles),
-          IconButton(icon: const Icon(Icons.add), onPressed: _navigateToAddVehicle),
+          IconButton(icon: Icon(Icons.refresh, color: _textPrimary), onPressed: _loadVehicles),
+          IconButton(icon: Icon(Icons.add, color: _textPrimary), onPressed: _navigateToAddVehicle),
         ],
       ),
       body: _isLoading
@@ -190,58 +241,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildSliverAppBar() {
-    return SliverAppBar(
-      floating: true,
-      snap: true,
-      backgroundColor: AppColors.white,
-      elevation: 0,
-      title: Row(
-        children: [
-          Container(
-            width: 40, height: 40,
-            decoration: BoxDecoration(color: AppColors.primaryLight, borderRadius: BorderRadius.circular(10)),
-            child: const Icon(Icons.directions_car, color: AppColors.primary, size: 22),
-          ),
-          const SizedBox(width: 12),
-          const Text('VMS', style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.dark)),
-        ],
-      ),
-      actions: [
-        IconButton(
-          icon: const Badge(smallSize: 8, child: Icon(Icons.notifications_outlined)),
-          onPressed: () => _showSnackBar('Notifications coming soon!'),
-        ),
-        const SizedBox(width: 8),
-      ],
-    );
-  }
-
-  Widget _buildWelcomeSection() {
-    final hour = DateTime.now().hour;
-    final greeting = hour < 12 ? 'Good Morning' : hour < 17 ? 'Good Afternoon' : 'Good Evening';
-    final userName = AuthService.userFullName ?? 'User';
-    final firstName = userName.split(' ').first;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('$greeting, $firstName! 👋', style: AppTheme.headingMd),
-        const SizedBox(height: 4),
-        Text('Manage your vehicles and bookings', style: AppTheme.bodyMd),
-      ],
-    );
-  }
-
   Widget _buildStatsSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Overview', style: AppTheme.titleLg),
+        Text('Overview', style: AppTheme.titleLg.copyWith(color: _textPrimary)),
         const SizedBox(height: 16),
         Row(
           children: [
-            Expanded(child: _buildStatCard(Icons.directions_car, 'Total', _totalVehicles.toString(), AppColors.primary)),
+            Expanded(child: _buildStatCard(Icons.directions_car, 'Total', _totalVehicles.toString(), _primaryColor)),
             const SizedBox(width: 12),
             Expanded(child: _buildStatCard(Icons.check_circle, 'Compliant', _compliantVehicles.toString(), AppColors.success)),
           ],
@@ -251,7 +259,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           children: [
             Expanded(child: _buildStatCard(Icons.warning_amber, 'Expiring', _expiringVehicles.toString(), AppColors.warning)),
             const SizedBox(width: 12),
-            Expanded(child: _buildStatCard(Icons.help_outline, 'No Test', _noTestVehicles.toString(), AppColors.gray)),
+            Expanded(child: _buildStatCard(Icons.help_outline, 'No Test', _noTestVehicles.toString(), _textSecondary)),
           ],
         ),
       ],
@@ -264,7 +272,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
       borderRadius: BorderRadius.circular(16),
       child: Container(
         padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppColors.border)),
+        decoration: BoxDecoration(
+          color: _cardColor,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: _borderColor),
+        ),
         child: Row(
           children: [
             Container(
@@ -276,8 +288,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(value, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.dark)),
-                Text(label, style: AppTheme.bodySm),
+                Text(value, style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: _textPrimary)),
+                Text(label, style: AppTheme.bodySm.copyWith(color: _textSecondary)),
               ],
             ),
           ],
@@ -290,11 +302,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Quick Actions', style: AppTheme.titleLg),
+        Text('Quick Actions', style: AppTheme.titleLg.copyWith(color: _textPrimary)),
         const SizedBox(height: 16),
         Row(
           children: [
-            Expanded(child: _buildActionButton(Icons.add_circle_outline, 'Add Vehicle', AppColors.primary, _navigateToAddVehicle)),
+            Expanded(child: _buildActionButton(Icons.add_circle_outline, 'Add Vehicle', _primaryColor, _navigateToAddVehicle)),
             const SizedBox(width: 12),
             Expanded(child: _buildActionButton(Icons.calendar_month, 'Book Test', AppColors.secondary, () => setState(() => _currentIndex = 2))),
             const SizedBox(width: 12),
@@ -311,7 +323,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
       borderRadius: BorderRadius.circular(16),
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 20),
-        decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(16)),
+        decoration: BoxDecoration(
+          color: color.withOpacity(_isDark ? 0.2 : 0.1),
+          borderRadius: BorderRadius.circular(16),
+        ),
         child: Column(
           children: [
             Icon(icon, color: color, size: 28),
@@ -330,7 +345,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text('My Vehicles', style: AppTheme.titleLg),
+            Text('My Vehicles', style: AppTheme.titleLg.copyWith(color: _textPrimary)),
             TextButton(onPressed: () => setState(() => _currentIndex = 1), child: const Text('See All')),
           ],
         ),
@@ -349,27 +364,34 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildVehicleCard(Vehicle vehicle, {bool tappable = false}) {
     final card = Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppColors.border)),
+      decoration: BoxDecoration(
+        color: _cardColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _borderColor),
+      ),
       child: Row(
         children: [
           Container(
             width: 56, height: 56,
-            decoration: BoxDecoration(color: AppColors.primaryLight, borderRadius: BorderRadius.circular(14)),
-            child: const Icon(Icons.directions_car, color: AppColors.primary, size: 28),
+            decoration: BoxDecoration(color: _primaryLight, borderRadius: BorderRadius.circular(14)),
+            child: Icon(Icons.directions_car, color: _primaryColor, size: 28),
           ),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(vehicle.displayName, style: AppTheme.titleMd),
+                Text(vehicle.displayName, style: AppTheme.titleMd.copyWith(color: _textPrimary)),
                 const SizedBox(height: 4),
-                Text(vehicle.fullPlate, style: AppTheme.bodyMd),
+                Text(vehicle.fullPlate, style: AppTheme.bodyMd.copyWith(color: _textSecondary)),
               ],
             ),
           ),
           _buildStatusBadge(vehicle),
-          if (tappable) const Padding(padding: EdgeInsets.only(left: 8), child: Icon(Icons.chevron_right, color: AppColors.lightGray)),
+          if (tappable) Padding(
+            padding: const EdgeInsets.only(left: 8),
+            child: Icon(Icons.chevron_right, color: _textSecondary),
+          ),
         ],
       ),
     );
@@ -380,7 +402,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     String text;
     Color color;
     if (vehicle.lastTestDate == null) {
-      text = 'No Test'; color = AppColors.gray;
+      text = 'No Test'; color = _textSecondary;
     } else if (vehicle.isTestDue) {
       text = 'Overdue'; color = AppColors.error;
     } else if (vehicle.isTestExpiringSoon) {
@@ -398,18 +420,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildEmptyState() {
     return Container(
       padding: const EdgeInsets.all(32),
-      decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppColors.border)),
+      decoration: BoxDecoration(
+        color: _cardColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _borderColor),
+      ),
       child: Column(
         children: [
           Container(
             width: 80, height: 80,
-            decoration: BoxDecoration(color: AppColors.background, borderRadius: BorderRadius.circular(20)),
-            child: const Icon(Icons.directions_car_outlined, size: 40, color: AppColors.lightGray),
+            decoration: BoxDecoration(color: _bgColor, borderRadius: BorderRadius.circular(20)),
+            child: Icon(Icons.directions_car_outlined, size: 40, color: _textSecondary),
           ),
           const SizedBox(height: 16),
-          Text('No vehicles yet', style: AppTheme.titleMd),
+          Text('No vehicles yet', style: AppTheme.titleMd.copyWith(color: _textPrimary)),
           const SizedBox(height: 8),
-          Text('Add your first vehicle to get started', style: AppTheme.bodyMd, textAlign: TextAlign.center),
+          Text('Add your first vehicle to get started', style: AppTheme.bodyMd.copyWith(color: _textSecondary), textAlign: TextAlign.center),
           const SizedBox(height: 16),
           ElevatedButton.icon(onPressed: _navigateToAddVehicle, icon: const Icon(Icons.add), label: const Text('Add Vehicle')),
         ],
@@ -419,14 +445,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Widget _buildProfileTab() {
     return Scaffold(
+      backgroundColor: _bgColor,
       appBar: AppBar(
-        title: const Text('Profile'),
+        title: Text('Profile', style: TextStyle(color: _textPrimary)),
+        backgroundColor: _cardColor,
         automaticallyImplyLeading: false,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.settings_outlined),
-            onPressed: _navigateToSettings,
-          ),
+          IconButton(icon: Icon(Icons.settings_outlined, color: _textPrimary), onPressed: _navigateToSettings),
         ],
       ),
       body: SingleChildScrollView(
@@ -454,31 +479,35 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     return Container(
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppColors.border)),
+      decoration: BoxDecoration(
+        color: _cardColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _borderColor),
+      ),
       child: Row(
         children: [
           Container(
             width: 72, height: 72,
-            decoration: BoxDecoration(color: AppColors.primaryLight, borderRadius: BorderRadius.circular(18)),
-            child: Center(child: Text(initials, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.primary))),
+            decoration: BoxDecoration(color: _primaryLight, borderRadius: BorderRadius.circular(18)),
+            child: Center(child: Text(initials, style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: _primaryColor))),
           ),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(userName, style: AppTheme.titleLg),
+                Text(userName, style: AppTheme.titleLg.copyWith(color: _textPrimary)),
                 const SizedBox(height: 4),
-                Text(userEmail, style: AppTheme.bodyMd),
+                Text(userEmail, style: AppTheme.bodyMd.copyWith(color: _textSecondary)),
                 if (userPhone.isNotEmpty) ...[
                   const SizedBox(height: 4),
-                  Text(userPhone, style: AppTheme.bodySm),
+                  Text(userPhone, style: AppTheme.bodySm.copyWith(color: _textSecondary)),
                 ],
               ],
             ),
           ),
           IconButton(
-            icon: const Icon(Icons.edit_outlined, color: AppColors.primary),
+            icon: Icon(Icons.edit_outlined, color: _primaryColor),
             onPressed: _navigateToEditProfile,
           ),
         ],
@@ -489,13 +518,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildProfileStats() {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppColors.border)),
+      decoration: BoxDecoration(
+        color: _cardColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _borderColor),
+      ),
       child: Row(
         children: [
           Expanded(child: _buildProfileStat('Vehicles', _totalVehicles.toString(), Icons.directions_car)),
-          Container(width: 1, height: 40, color: AppColors.border),
+          Container(width: 1, height: 40, color: _borderColor),
           Expanded(child: _buildProfileStat('Compliant', _compliantVehicles.toString(), Icons.check_circle)),
-          Container(width: 1, height: 40, color: AppColors.border),
+          Container(width: 1, height: 40, color: _borderColor),
           Expanded(child: _buildProfileStat('Bookings', '0', Icons.calendar_today)),
         ],
       ),
@@ -505,27 +538,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildProfileStat(String label, String value, IconData icon) {
     return Column(
       children: [
-        Icon(icon, color: AppColors.primary, size: 24),
+        Icon(icon, color: _primaryColor, size: 24),
         const SizedBox(height: 8),
-        Text(value, style: AppTheme.titleLg),
-        Text(label, style: AppTheme.bodySm),
+        Text(value, style: AppTheme.titleLg.copyWith(color: _textPrimary)),
+        Text(label, style: AppTheme.bodySm.copyWith(color: _textSecondary)),
       ],
     );
   }
 
   Widget _buildProfileMenu() {
     return Container(
-      decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppColors.border)),
+      decoration: BoxDecoration(
+        color: _cardColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _borderColor),
+      ),
       child: Column(
         children: [
           _buildMenuItem(Icons.person_outline, 'Edit Profile', _navigateToEditProfile),
-          const Divider(height: 1),
+          Divider(height: 1, color: _borderColor),
           _buildMenuItem(Icons.notifications_outlined, 'Notifications', () => _showSnackBar('Notifications coming soon!')),
-          const Divider(height: 1),
+          Divider(height: 1, color: _borderColor),
           _buildMenuItem(Icons.security, 'Privacy & Security', () => _showSnackBar('Privacy settings coming soon!')),
-          const Divider(height: 1),
+          Divider(height: 1, color: _borderColor),
           _buildMenuItem(Icons.help_outline, 'Help & Support', () => _showSnackBar('Help & Support coming soon!')),
-          const Divider(height: 1),
+          Divider(height: 1, color: _borderColor),
           _buildMenuItem(Icons.info_outline, 'About', () => _showAboutDialog()),
         ],
       ),
@@ -536,11 +573,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return ListTile(
       leading: Container(
         width: 40, height: 40,
-        decoration: BoxDecoration(color: AppColors.background, borderRadius: BorderRadius.circular(10)),
-        child: Icon(icon, color: AppColors.gray, size: 20),
+        decoration: BoxDecoration(color: _bgColor, borderRadius: BorderRadius.circular(10)),
+        child: Icon(icon, color: _textSecondary, size: 20),
       ),
-      title: Text(title, style: AppTheme.bodyMd.copyWith(color: AppColors.dark)),
-      trailing: const Icon(Icons.chevron_right, color: AppColors.lightGray),
+      title: Text(title, style: AppTheme.bodyMd.copyWith(color: _textPrimary)),
+      trailing: Icon(Icons.chevron_right, color: _textSecondary),
       onTap: onTap,
     );
   }
@@ -552,7 +589,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
         onPressed: _handleLogout,
         icon: const Icon(Icons.logout, color: AppColors.error),
         label: const Text('Logout', style: TextStyle(color: AppColors.error)),
-        style: OutlinedButton.styleFrom(side: const BorderSide(color: AppColors.error), padding: const EdgeInsets.symmetric(vertical: 14)),
+        style: OutlinedButton.styleFrom(
+          side: const BorderSide(color: AppColors.error),
+          padding: const EdgeInsets.symmetric(vertical: 14),
+        ),
       ),
     );
   }
@@ -578,31 +618,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
+        backgroundColor: _cardColor,
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
               width: 80, height: 80,
-              decoration: BoxDecoration(color: AppColors.primaryLight, borderRadius: BorderRadius.circular(20)),
-              child: const Icon(Icons.directions_car, color: AppColors.primary, size: 40),
+              decoration: BoxDecoration(color: _primaryLight, borderRadius: BorderRadius.circular(20)),
+              child: Icon(Icons.directions_car, color: _primaryColor, size: 40),
             ),
             const SizedBox(height: 16),
-            Text('VMS Green Crescent', style: AppTheme.headingSm),
+            Text('VMS Green Crescent', style: AppTheme.headingSm.copyWith(color: _textPrimary)),
             const SizedBox(height: 8),
-            Text('Version 1.0.0', style: AppTheme.bodyMd),
+            Text('Version 1.0.0', style: AppTheme.bodyMd.copyWith(color: _textSecondary)),
             const SizedBox(height: 16),
-            Text(
-              'Vehicle Management System for tracking emission tests and bookings.',
-              style: AppTheme.bodySm,
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 16),
-            Text('© 2025 Green Crescent', style: AppTheme.bodySm.copyWith(color: AppColors.gray)),
+            Text('Vehicle Management System for tracking emission tests.', style: AppTheme.bodySm.copyWith(color: _textSecondary), textAlign: TextAlign.center),
           ],
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close')),
-        ],
+        actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close'))],
       ),
     );
   }
@@ -611,17 +644,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Logout'),
-        content: const Text('Are you sure you want to logout?'),
+        backgroundColor: _cardColor,
+        title: Text('Logout', style: TextStyle(color: _textPrimary)),
+        content: Text('Are you sure you want to logout?', style: TextStyle(color: _textSecondary)),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
           ElevatedButton(
             onPressed: () async {
               Navigator.pop(context);
               await AuthService.signOut();
-              if (mounted) {
-                Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const LoginScreen()));
-              }
+              if (mounted) Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const LoginScreen()));
             },
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
             child: const Text('Logout'),

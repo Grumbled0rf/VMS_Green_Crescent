@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../../core/services/supabase_service.dart';
 import '../../dashboard/screens/dashboard_screen.dart';
 import 'login_screen.dart';
+import 'onboarding_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -21,6 +22,9 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
   late Animation<double> _textSlide;
   late Animation<double> _textOpacity;
   late Animation<double> _loadingOpacity;
+
+  // Set to true to show onboarding (set false after first run in production)
+  static bool _showOnboarding = true;
 
   @override
   void initState() {
@@ -71,25 +75,43 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
 
   void _startAnimations() async {
     await Future.delayed(const Duration(milliseconds: 200));
+    if (!mounted) return;
     _logoController.forward();
     
     await Future.delayed(const Duration(milliseconds: 600));
+    if (!mounted) return;
     _textController.forward();
     
     await Future.delayed(const Duration(milliseconds: 400));
+    if (!mounted) return;
     _loadingController.forward();
     
     await Future.delayed(const Duration(milliseconds: 1200));
+    if (!mounted) return;
     _navigateToNextScreen();
   }
 
   void _navigateToNextScreen() {
-    final isLoggedIn = SupabaseService.isLoggedIn;
+    // Check if user is logged in using Supabase directly
+    final isLoggedIn = Supabase.instance.client.auth.currentUser != null;
+    
+    Widget nextScreen;
+    
+    if (isLoggedIn) {
+      // User is logged in - go to dashboard
+      nextScreen = const DashboardScreen();
+    } else if (_showOnboarding) {
+      // First time user - show onboarding
+      _showOnboarding = false; // Don't show again this session
+      nextScreen = const OnboardingScreen();
+    } else {
+      // Returning user - go to login
+      nextScreen = const LoginScreen();
+    }
     
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) =>
-            isLoggedIn ? const DashboardScreen() : const LoginScreen(),
+        pageBuilder: (context, animation, secondaryAnimation) => nextScreen,
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           return FadeTransition(opacity: animation, child: child);
         },
@@ -157,7 +179,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                             Container(
                               width: 100,
                               height: 100,
-                              decoration: BoxDecoration(
+                              decoration: const BoxDecoration(
                                 color: AppColors.primaryLight,
                                 shape: BoxShape.circle,
                               ),
