@@ -4,6 +4,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/services/vehicle_service.dart';
 import '../../../core/services/auth_service.dart';
 import '../../../shared/models/vehicle.dart';
+import '../../../shared/widgets/responsive.dart';
 import '../../auth/screens/login_screen.dart';
 import '../../vehicles/screens/add_vehicle_screen.dart';
 import '../../vehicles/screens/vehicle_detail_screen.dart';
@@ -61,45 +62,70 @@ class _DashboardScreenState extends State<DashboardScreen> {
   int get _expiringVehicles => _vehicles.where((v) => v.isTestExpiringSoon).length;
   int get _noTestVehicles => _vehicles.where((v) => v.lastTestDate == null).length;
 
-  void _navigateToAddVehicle() async {
-    final result = await Navigator.of(context).push<Vehicle>(
-      MaterialPageRoute(builder: (_) => AddVehicleScreen(onVehicleAdded: (v) {})),
-    );
-    if (result != null) {
-      _loadVehicles();
-      _showSnackBar('Vehicle added successfully! 🎉');
-    }
-  }
-
-  void _navigateToVehicleDetail(Vehicle vehicle) async {
-    final result = await Navigator.of(context).push<dynamic>(
-      MaterialPageRoute(
-        builder: (_) => VehicleDetailScreen(
-          vehicle: vehicle,
-          onVehicleUpdated: (v) => _loadVehicles(),
-          onVehicleDeleted: (id) => _loadVehicles(),
-        ),
-      ),
-    );
-    if (result == 'deleted') _loadVehicles();
-  }
-
-  void _navigateToEditProfile() async {
-    final result = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(builder: (_) => const EditProfileScreen()),
-    );
-    if (result == true) setState(() {});
-  }
-
-  void _navigateToSettings() {
-    Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SettingsScreen()));
-  }
-
   @override
   Widget build(BuildContext context) {
+    // Use responsive layout
+    if (Responsive.isDesktop(context)) {
+      return _buildDesktopLayout();
+    } else if (Responsive.isTablet(context)) {
+      return _buildTabletLayout();
+    }
+    return _buildMobileLayout();
+  }
+
+  // ==========================================
+  // DESKTOP LAYOUT - Sidebar Navigation
+  // ==========================================
+  Widget _buildDesktopLayout() {
     return Scaffold(
       backgroundColor: _bgColor,
-      body: _buildBody(),
+      body: Row(
+        children: [
+          // Sidebar
+          _buildSidebar(expanded: true),
+          
+          // Vertical Divider
+          VerticalDivider(width: 1, color: _borderColor),
+          
+          // Main Content
+          Expanded(
+            child: _buildMainContent(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ==========================================
+  // TABLET LAYOUT - Rail Navigation
+  // ==========================================
+  Widget _buildTabletLayout() {
+    return Scaffold(
+      backgroundColor: _bgColor,
+      body: Row(
+        children: [
+          // Navigation Rail
+          _buildSidebar(expanded: false),
+          
+          // Vertical Divider
+          VerticalDivider(width: 1, color: _borderColor),
+          
+          // Main Content
+          Expanded(
+            child: _buildMainContent(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ==========================================
+  // MOBILE LAYOUT - Bottom Navigation
+  // ==========================================
+  Widget _buildMobileLayout() {
+    return Scaffold(
+      backgroundColor: _bgColor,
+      body: _buildMainContent(),
       bottomNavigationBar: _buildBottomNav(),
       floatingActionButton: (_currentIndex == 0 || _currentIndex == 1)
           ? FloatingActionButton.extended(
@@ -111,28 +137,223 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildBody() {
-    switch (_currentIndex) {
-      case 0: return _buildHomeTab();
-      case 1: return _buildVehiclesTab();
-      case 2: return BookingScreen(vehicles: _vehicles);
-      case 3: return _buildProfileTab();
-      default: return _buildHomeTab();
-    }
+  // ==========================================
+  // SIDEBAR (Desktop & Tablet)
+  // ==========================================
+  Widget _buildSidebar({required bool expanded}) {
+    final items = [
+      _NavItem(Icons.home_outlined, Icons.home, 'Home'),
+      _NavItem(Icons.directions_car_outlined, Icons.directions_car, 'Vehicles'),
+      _NavItem(Icons.calendar_today_outlined, Icons.calendar_today, 'Bookings'),
+      _NavItem(Icons.person_outline, Icons.person, 'Profile'),
+    ];
+
+    return Container(
+      width: expanded ? 250 : 80,
+      color: _cardColor,
+      child: Column(
+        children: [
+          // Logo Header
+          Container(
+            height: 80,
+            padding: EdgeInsets.symmetric(horizontal: expanded ? 20 : 16),
+            child: Row(
+              mainAxisAlignment: expanded ? MainAxisAlignment.start : MainAxisAlignment.center,
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: _primaryLight,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(Icons.directions_car, color: _primaryColor, size: 22),
+                ),
+                if (expanded) ...[
+                  const SizedBox(width: 12),
+                  Text('VMS', style: AppTheme.titleLg.copyWith(color: _textPrimary)),
+                ],
+              ],
+            ),
+          ),
+          
+          Divider(height: 1, color: _borderColor),
+          
+          const SizedBox(height: 16),
+          
+          // Navigation Items
+          ...items.asMap().entries.map((entry) {
+            final index = entry.key;
+            final item = entry.value;
+            final isSelected = _currentIndex == index;
+            
+            return Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: expanded ? 12 : 8,
+                vertical: 4,
+              ),
+              child: Material(
+                color: isSelected ? _primaryColor.withOpacity(0.1) : Colors.transparent,
+                borderRadius: BorderRadius.circular(12),
+                child: InkWell(
+                  onTap: () => setState(() => _currentIndex = index),
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    height: 50,
+                    padding: EdgeInsets.symmetric(horizontal: expanded ? 16 : 0),
+                    child: Row(
+                      mainAxisAlignment: expanded ? MainAxisAlignment.start : MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          isSelected ? item.activeIcon : item.icon,
+                          color: isSelected ? _primaryColor : _textSecondary,
+                          size: 24,
+                        ),
+                        if (expanded) ...[
+                          const SizedBox(width: 12),
+                          Text(
+                            item.label,
+                            style: TextStyle(
+                              color: isSelected ? _primaryColor : _textPrimary,
+                              fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }),
+          
+          const Spacer(),
+          
+          // Add Vehicle Button
+          Padding(
+            padding: EdgeInsets.all(expanded ? 16 : 12),
+            child: SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _navigateToAddVehicle,
+                icon: const Icon(Icons.add, size: 20),
+                label: expanded ? const Text('Add Vehicle') : const SizedBox.shrink(),
+                style: ElevatedButton.styleFrom(
+                  padding: EdgeInsets.symmetric(vertical: expanded ? 14 : 14),
+                ),
+              ),
+            ),
+          ),
+          
+          Divider(height: 1, color: _borderColor),
+          
+          // Settings & Logout
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: expanded ? 12 : 8, vertical: 8),
+            child: Column(
+              children: [
+                _buildSidebarAction(
+                  icon: Icons.settings_outlined,
+                  label: 'Settings',
+                  expanded: expanded,
+                  onTap: _navigateToSettings,
+                ),
+                _buildSidebarAction(
+                  icon: Icons.logout,
+                  label: 'Logout',
+                  expanded: expanded,
+                  onTap: _handleLogout,
+                  isDestructive: true,
+                ),
+              ],
+            ),
+          ),
+          
+          const SizedBox(height: 16),
+        ],
+      ),
+    );
   }
 
-  Widget _buildHomeTab() {
+  Widget _buildSidebarAction({
+    required IconData icon,
+    required String label,
+    required bool expanded,
+    required VoidCallback onTap,
+    bool isDestructive = false,
+  }) {
+    final color = isDestructive ? AppColors.error : _textSecondary;
+    
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          height: 44,
+          padding: EdgeInsets.symmetric(horizontal: expanded ? 16 : 0),
+          child: Row(
+            mainAxisAlignment: expanded ? MainAxisAlignment.start : MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: color, size: 22),
+              if (expanded) ...[
+                const SizedBox(width: 12),
+                Text(label, style: TextStyle(color: color)),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ==========================================
+  // MAIN CONTENT
+  // ==========================================
+  Widget _buildMainContent() {
+    Widget content;
+    switch (_currentIndex) {
+      case 0:
+        content = _buildHomeContent();
+        break;
+      case 1:
+        content = _buildVehiclesContent();
+        break;
+      case 2:
+        content = BookingScreen(vehicles: _vehicles);
+        break;
+      case 3:
+        content = _buildProfileContent();
+        break;
+      default:
+        content = _buildHomeContent();
+    }
+    return content;
+  }
+
+  Widget _buildHomeContent() {
+    final isDesktopOrTablet = Responsive.isDesktop(context) || Responsive.isTablet(context);
+    
     return RefreshIndicator(
       onRefresh: _loadVehicles,
       child: CustomScrollView(
         slivers: [
-          _buildSliverAppBar(),
+          // App Bar (only for mobile, desktop/tablet has sidebar)
+          if (!isDesktopOrTablet) _buildSliverAppBar(),
+          
           SliverPadding(
-            padding: const EdgeInsets.all(20),
+            padding: Responsive.padding(context),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
+                // Header for desktop/tablet
+                if (isDesktopOrTablet) ...[
+                  _buildDesktopHeader(),
+                  const SizedBox(height: 24),
+                ],
+                
                 _buildWelcomeSection(),
                 const SizedBox(height: 24),
+                
                 if (_isLoading)
                   const Center(child: Padding(padding: EdgeInsets.all(40), child: CircularProgressIndicator()))
                 else if (_error != null)
@@ -150,6 +371,30 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildDesktopHeader() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text('Dashboard', style: AppTheme.headingMd.copyWith(color: _textPrimary)),
+        Row(
+          children: [
+            IconButton(
+              icon: Badge(smallSize: 8, child: Icon(Icons.notifications_outlined, color: _textPrimary)),
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+              ),
+            ),
+            const SizedBox(width: 8),
+            IconButton(
+              icon: Icon(Icons.settings_outlined, color: _textPrimary),
+              onPressed: _navigateToSettings,
+            ),
+          ],
+        ),
+      ],
     );
   }
 
@@ -172,11 +417,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ),
       actions: [
         IconButton(
-  icon: Badge(smallSize: 8, child: Icon(Icons.notifications_outlined, color: _textPrimary)),
-  onPressed: () => Navigator.of(context).push(
-    MaterialPageRoute(builder: (_) => const NotificationsScreen()),
-  ),
-),
+          icon: Badge(smallSize: 8, child: Icon(Icons.notifications_outlined, color: _textPrimary)),
+          onPressed: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+          ),
+        ),
         const SizedBox(width: 8),
       ],
     );
@@ -214,55 +459,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildVehiclesTab() {
-    return Scaffold(
-      backgroundColor: _bgColor,
-      appBar: AppBar(
-        title: Text('My Vehicles', style: TextStyle(color: _textPrimary)),
-        backgroundColor: _cardColor,
-        automaticallyImplyLeading: false,
-        actions: [
-          IconButton(icon: Icon(Icons.refresh, color: _textPrimary), onPressed: _loadVehicles),
-          IconButton(icon: Icon(Icons.add, color: _textPrimary), onPressed: _navigateToAddVehicle),
-        ],
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _vehicles.isEmpty
-              ? _buildEmptyState()
-              : RefreshIndicator(
-                  onRefresh: _loadVehicles,
-                  child: ListView.builder(
-                    padding: const EdgeInsets.all(20),
-                    itemCount: _vehicles.length,
-                    itemBuilder: (context, index) => Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: _buildVehicleCard(_vehicles[index], tappable: true),
-                    ),
-                  ),
-                ),
-    );
-  }
-
   Widget _buildStatsSection() {
+    final columns = Responsive.value(context, mobile: 2, tablet: 4, desktop: 4);
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text('Overview', style: AppTheme.titleLg.copyWith(color: _textPrimary)),
         const SizedBox(height: 16),
-        Row(
+        ResponsiveGrid(
+          columns: columns,
+          spacing: 12,
+          runSpacing: 12,
           children: [
-            Expanded(child: _buildStatCard(Icons.directions_car, 'Total', _totalVehicles.toString(), _primaryColor)),
-            const SizedBox(width: 12),
-            Expanded(child: _buildStatCard(Icons.check_circle, 'Compliant', _compliantVehicles.toString(), AppColors.success)),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(child: _buildStatCard(Icons.warning_amber, 'Expiring', _expiringVehicles.toString(), AppColors.warning)),
-            const SizedBox(width: 12),
-            Expanded(child: _buildStatCard(Icons.help_outline, 'No Test', _noTestVehicles.toString(), _textSecondary)),
+            _buildStatCard(Icons.directions_car, 'Total', _totalVehicles.toString(), _primaryColor),
+            _buildStatCard(Icons.check_circle, 'Compliant', _compliantVehicles.toString(), AppColors.success),
+            _buildStatCard(Icons.warning_amber, 'Expiring', _expiringVehicles.toString(), AppColors.warning),
+            _buildStatCard(Icons.help_outline, 'No Test', _noTestVehicles.toString(), _textSecondary),
           ],
         ),
       ],
@@ -280,21 +493,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: _borderColor),
         ),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
-              width: 48, height: 48,
+              width: 44,
+              height: 44,
               decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
-              child: Icon(icon, color: color, size: 24),
+              child: Icon(icon, color: color, size: 22),
             ),
-            const SizedBox(width: 12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(value, style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: _textPrimary)),
-                Text(label, style: AppTheme.bodySm.copyWith(color: _textSecondary)),
-              ],
-            ),
+            const SizedBox(height: 12),
+            Text(value, style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: _textPrimary)),
+            const SizedBox(height: 4),
+            Text(label, style: AppTheme.bodySm.copyWith(color: _textSecondary)),
           ],
         ),
       ),
@@ -307,13 +518,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
       children: [
         Text('Quick Actions', style: AppTheme.titleLg.copyWith(color: _textPrimary)),
         const SizedBox(height: 16),
-        Row(
+        ResponsiveGrid(
+          columns: Responsive.value(context, mobile: 3, tablet: 3, desktop: 3),
+          spacing: 12,
+          runSpacing: 12,
           children: [
-            Expanded(child: _buildActionButton(Icons.add_circle_outline, 'Add Vehicle', _primaryColor, _navigateToAddVehicle)),
-            const SizedBox(width: 12),
-            Expanded(child: _buildActionButton(Icons.calendar_month, 'Book Test', AppColors.secondary, () => setState(() => _currentIndex = 2))),
-            const SizedBox(width: 12),
-            Expanded(child: _buildActionButton(Icons.history, 'History', AppColors.accent, () => _showSnackBar('History coming soon!'))),
+            _buildActionButton(Icons.add_circle_outline, 'Add Vehicle', _primaryColor, _navigateToAddVehicle),
+            _buildActionButton(Icons.calendar_month, 'Book Test', AppColors.secondary, () => setState(() => _currentIndex = 2)),
+            _buildActionButton(Icons.history, 'History', AppColors.accent, () => _showSnackBar('History coming soon!')),
           ],
         ),
       ],
@@ -342,6 +554,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildRecentVehicles() {
+    final columns = Responsive.value(context, mobile: 1, tablet: 2, desktop: 3);
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -356,11 +570,66 @@ class _DashboardScreenState extends State<DashboardScreen> {
         if (_vehicles.isEmpty)
           _buildEmptyState()
         else
-          ...(_vehicles.take(3).map((v) => Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: _buildVehicleCard(v, tappable: true),
-              ))),
+          ResponsiveGrid(
+            columns: columns,
+            spacing: 12,
+            runSpacing: 12,
+            children: _vehicles.take(columns == 1 ? 3 : 6).map((v) => _buildVehicleCard(v, tappable: true)).toList(),
+          ),
       ],
+    );
+  }
+
+  Widget _buildVehiclesContent() {
+    final columns = Responsive.value(context, mobile: 1, tablet: 2, desktop: 3);
+    final isDesktopOrTablet = Responsive.isDesktop(context) || Responsive.isTablet(context);
+    
+    return Scaffold(
+      backgroundColor: _bgColor,
+      appBar: isDesktopOrTablet ? null : AppBar(
+        title: Text('My Vehicles', style: TextStyle(color: _textPrimary)),
+        backgroundColor: _cardColor,
+        automaticallyImplyLeading: false,
+        actions: [
+          IconButton(icon: Icon(Icons.refresh, color: _textPrimary), onPressed: _loadVehicles),
+          IconButton(icon: Icon(Icons.add, color: _textPrimary), onPressed: _navigateToAddVehicle),
+        ],
+      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _vehicles.isEmpty
+              ? Center(child: _buildEmptyState())
+              : RefreshIndicator(
+                  onRefresh: _loadVehicles,
+                  child: SingleChildScrollView(
+                    padding: Responsive.padding(context),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (isDesktopOrTablet) ...[
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text('My Vehicles', style: AppTheme.headingMd.copyWith(color: _textPrimary)),
+                              ElevatedButton.icon(
+                                onPressed: _navigateToAddVehicle,
+                                icon: const Icon(Icons.add),
+                                label: const Text('Add Vehicle'),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 24),
+                        ],
+                        ResponsiveGrid(
+                          columns: columns,
+                          spacing: 16,
+                          runSpacing: 16,
+                          children: _vehicles.map((v) => _buildVehicleCard(v, tappable: true)).toList(),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
     );
   }
 
@@ -372,33 +641,43 @@ class _DashboardScreenState extends State<DashboardScreen> {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: _borderColor),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 56, height: 56,
-            decoration: BoxDecoration(color: _primaryLight, borderRadius: BorderRadius.circular(14)),
-            child: Icon(Icons.directions_car, color: _primaryColor, size: 28),
+          Row(
+            children: [
+              Container(
+                width: 56, height: 56,
+                decoration: BoxDecoration(color: _primaryLight, borderRadius: BorderRadius.circular(14)),
+                child: Icon(Icons.directions_car, color: _primaryColor, size: 28),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(vehicle.displayName, style: AppTheme.titleMd.copyWith(color: _textPrimary)),
+                    const SizedBox(height: 4),
+                    Text(vehicle.fullPlate, style: AppTheme.bodyMd.copyWith(color: _textSecondary)),
+                  ],
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(vehicle.displayName, style: AppTheme.titleMd.copyWith(color: _textPrimary)),
-                const SizedBox(height: 4),
-                Text(vehicle.fullPlate, style: AppTheme.bodyMd.copyWith(color: _textSecondary)),
-              ],
-            ),
-          ),
-          _buildStatusBadge(vehicle),
-          if (tappable) Padding(
-            padding: const EdgeInsets.only(left: 8),
-            child: Icon(Icons.chevron_right, color: _textSecondary),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _buildStatusBadge(vehicle),
+              if (tappable) Icon(Icons.chevron_right, color: _textSecondary),
+            ],
           ),
         ],
       ),
     );
-    return tappable ? InkWell(onTap: () => _navigateToVehicleDetail(vehicle), borderRadius: BorderRadius.circular(16), child: card) : card;
+    return tappable 
+        ? InkWell(onTap: () => _navigateToVehicleDetail(vehicle), borderRadius: BorderRadius.circular(16), child: card) 
+        : card;
   }
 
   Widget _buildStatusBadge(Vehicle vehicle) {
@@ -429,6 +708,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         border: Border.all(color: _borderColor),
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
           Container(
             width: 80, height: 80,
@@ -446,10 +726,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildProfileTab() {
+  Widget _buildProfileContent() {
+    final isDesktopOrTablet = Responsive.isDesktop(context) || Responsive.isTablet(context);
+    
     return Scaffold(
       backgroundColor: _bgColor,
-      appBar: AppBar(
+      appBar: isDesktopOrTablet ? null : AppBar(
         title: Text('Profile', style: TextStyle(color: _textPrimary)),
         backgroundColor: _cardColor,
         automaticallyImplyLeading: false,
@@ -458,17 +740,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
-            _buildProfileHeader(),
-            const SizedBox(height: 24),
-            _buildProfileStats(),
-            const SizedBox(height: 24),
-            _buildProfileMenu(),
-            const SizedBox(height: 24),
-            _buildLogoutButton(),
-          ],
+        padding: Responsive.padding(context),
+        child: CenteredContent(
+          maxWidth: 600,
+          padding: EdgeInsets.zero,
+          child: Column(
+            children: [
+              if (isDesktopOrTablet) ...[
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text('Profile', style: AppTheme.headingMd.copyWith(color: _textPrimary)),
+                ),
+                const SizedBox(height: 24),
+              ],
+              _buildProfileHeader(),
+              const SizedBox(height: 24),
+              _buildProfileStats(),
+              const SizedBox(height: 24),
+              _buildProfileMenu(),
+              const SizedBox(height: 24),
+              _buildLogoutButton(),
+            ],
+          ),
         ),
       ),
     );
@@ -560,13 +853,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
         children: [
           _buildMenuItem(Icons.person_outline, 'Edit Profile', _navigateToEditProfile),
           Divider(height: 1, color: _borderColor),
-          _buildMenuItem(Icons.notifications_outlined, 'Notifications', () => _showSnackBar('Notifications coming soon!')),
+          _buildMenuItem(Icons.notifications_outlined, 'Notifications', () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+          )),
           Divider(height: 1, color: _borderColor),
           _buildMenuItem(Icons.security, 'Privacy & Security', () => _showSnackBar('Privacy settings coming soon!')),
           Divider(height: 1, color: _borderColor),
           _buildMenuItem(Icons.help_outline, 'Help & Support', () => _showSnackBar('Help & Support coming soon!')),
           Divider(height: 1, color: _borderColor),
-          _buildMenuItem(Icons.info_outline, 'About', () => _showAboutDialog()),
+          _buildMenuItem(Icons.info_outline, 'About', _showAboutDialog),
         ],
       ),
     );
@@ -611,6 +906,43 @@ class _DashboardScreenState extends State<DashboardScreen> {
         BottomNavigationBarItem(icon: Icon(Icons.person_outline), activeIcon: Icon(Icons.person), label: 'Profile'),
       ],
     );
+  }
+
+  // ==========================================
+  // NAVIGATION METHODS
+  // ==========================================
+  void _navigateToAddVehicle() async {
+    final result = await Navigator.of(context).push<Vehicle>(
+      MaterialPageRoute(builder: (_) => AddVehicleScreen(onVehicleAdded: (v) {})),
+    );
+    if (result != null) {
+      _loadVehicles();
+      _showSnackBar('Vehicle added successfully! 🎉');
+    }
+  }
+
+  void _navigateToVehicleDetail(Vehicle vehicle) async {
+    final result = await Navigator.of(context).push<dynamic>(
+      MaterialPageRoute(
+        builder: (_) => VehicleDetailScreen(
+          vehicle: vehicle,
+          onVehicleUpdated: (v) => _loadVehicles(),
+          onVehicleDeleted: (id) => _loadVehicles(),
+        ),
+      ),
+    );
+    if (result == 'deleted') _loadVehicles();
+  }
+
+  void _navigateToEditProfile() async {
+    final result = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(builder: (_) => const EditProfileScreen()),
+    );
+    if (result == true) setState(() {});
+  }
+
+  void _navigateToSettings() {
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SettingsScreen()));
   }
 
   void _showSnackBar(String message) {
@@ -665,4 +997,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ),
     );
   }
+}
+
+class _NavItem {
+  final IconData icon;
+  final IconData activeIcon;
+  final String label;
+
+  _NavItem(this.icon, this.activeIcon, this.label);
 }
