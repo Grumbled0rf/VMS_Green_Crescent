@@ -42,3 +42,18 @@ android {
 flutter {
     source = "../.."
 }
+
+plugins {
+    id 'com.google.gms.google-services'
+}
+
+android {
+    defaultConfig {
+        minSdkVersion 21
+        multiDexEnabled true
+    }
+}
+
+dependencies {
+    implementation platform('com.google.firebase:firebase-bom:32.7.0')
+}

@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "799896518184",
+    "project_id": "vms-green",
+    "storage_bucket": "vms-green.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:799896518184:android:7201ae9031fcdcb4d9ff1d",
+        "android_client_info": {
+          "package_name": "com.greencrescent.flutter_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAgWZcRseJD23-ndtI8GRphurrwQVKGrAM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:799896518184:android:2d698964e8b4bef9d9ff1d",
+        "android_client_info": {
+          "package_name": "com.greencrescent.vms"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAgWZcRseJD23-ndtI8GRphurrwQVKGrAM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

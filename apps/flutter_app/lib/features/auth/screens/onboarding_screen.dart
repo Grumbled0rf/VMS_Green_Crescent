@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/services/localization_service.dart';
 import 'login_screen.dart';
 
 class OnboardingScreen extends StatefulWidget {
@@ -14,29 +15,38 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
 
-  final List<OnboardingItem> _items = [
+  // Theme helpers
+  bool get _isDark => Theme.of(context).brightness == Brightness.dark;
+  Color get _bgColor => _isDark ? AppColors.darkBackground : AppColors.background;
+  Color get _textPrimary => _isDark ? AppColors.darkTextPrimary : AppColors.dark;
+  Color get _textSecondary => _isDark ? AppColors.darkTextSecondary : AppColors.gray;
+
+  // Localization
+  String _tr(String key) => AppStrings.get(key, context);
+
+  List<OnboardingItem> get _items => [
     OnboardingItem(
       icon: Icons.directions_car,
-      title: 'Manage Your Vehicles',
-      description: 'Add and track all your vehicles in one place. Keep your fleet organized and up-to-date.',
+      titleKey: 'onboarding_title_1',
+      descKey: 'onboarding_desc_1',
       color: AppColors.primary,
     ),
     OnboardingItem(
       icon: Icons.event_available,
-      title: 'Book Emission Tests',
-      description: 'Schedule emission tests at your convenience. Choose from multiple test centers across UAE.',
+      titleKey: 'onboarding_title_2',
+      descKey: 'onboarding_desc_2',
       color: AppColors.secondary,
     ),
     OnboardingItem(
       icon: Icons.notifications_active,
-      title: 'Never Miss a Deadline',
-      description: 'Get timely reminders before your test expires. Stay compliant and avoid penalties.',
+      titleKey: 'onboarding_title_3',
+      descKey: 'onboarding_desc_3',
       color: AppColors.accent,
     ),
     OnboardingItem(
       icon: Icons.home_work,
-      title: 'Onsite Testing',
-      description: 'Book Green Crescent onsite service and we\'ll come to you. Save time and hassle!',
+      titleKey: 'onboarding_title_4',
+      descKey: 'onboarding_desc_4',
       color: AppColors.success,
     ),
   ];
@@ -73,21 +83,18 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: _bgColor,
       body: SafeArea(
         child: Column(
           children: [
             // Skip button
             Align(
-              alignment: Alignment.topRight,
+              alignment: AlignmentDirectional.topEnd,
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: TextButton(
                   onPressed: _navigateToLogin,
-                  child: Text(
-                    'Skip',
-                    style: AppTheme.bodyMd.copyWith(color: AppColors.gray),
-                  ),
+                  child: Text(_tr('skip'), style: AppTheme.bodyMd.copyWith(color: _textSecondary)),
                 ),
               ),
             ),
@@ -130,14 +137,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(
-                            _currentPage == _items.length - 1 ? 'Get Started' : 'Next',
+                            _currentPage == _items.length - 1 ? _tr('get_started') : _tr('next'),
                             style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                           ),
                           const SizedBox(width: 8),
                           Icon(
-                            _currentPage == _items.length - 1
-                                ? Icons.check
-                                : Icons.arrow_forward,
+                            _currentPage == _items.length - 1 ? Icons.check : Icons.arrow_forward,
                             size: 20,
                           ),
                         ],
@@ -175,11 +180,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   color: item.color.withOpacity(0.2),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(
-                  item.icon,
-                  size: 64,
-                  color: item.color,
-                ),
+                child: Icon(item.icon, size: 64, color: item.color),
               ),
             ),
           ),
@@ -187,16 +188,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
           // Title
           Text(
-            item.title,
-            style: AppTheme.headingMd,
+            _tr(item.titleKey),
+            style: AppTheme.headingMd.copyWith(color: _textPrimary),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 16),
 
           // Description
           Text(
-            item.description,
-            style: AppTheme.bodyMd.copyWith(height: 1.6),
+            _tr(item.descKey),
+            style: AppTheme.bodyMd.copyWith(height: 1.6, color: _textSecondary),
             textAlign: TextAlign.center,
           ),
         ],
@@ -220,14 +221,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
 class OnboardingItem {
   final IconData icon;
-  final String title;
-  final String description;
+  final String titleKey;
+  final String descKey;
   final Color color;
 
   OnboardingItem({
     required this.icon,
-    required this.title,
-    required this.description,
+    required this.titleKey,
+    required this.descKey,
     required this.color,
   });
 }

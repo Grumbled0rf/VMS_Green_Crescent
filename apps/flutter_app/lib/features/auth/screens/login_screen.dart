@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/auth_service.dart';
+import '../../../core/services/localization_service.dart';
 import '../../dashboard/screens/dashboard_screen.dart';
 import 'register_screen.dart';
 import 'forgot_password_screen.dart';
@@ -29,6 +30,9 @@ class _LoginScreenState extends State<LoginScreen> {
   Color get _textSecondary => _isDark ? AppColors.darkTextSecondary : AppColors.gray;
   Color get _primaryColor => _isDark ? AppColors.darkPrimary : AppColors.primary;
   Color get _primaryLight => _isDark ? AppColors.darkPrimaryLight : AppColors.primaryLight;
+
+  // Localization helper
+  String _tr(String key) => AppStrings.get(key, context);
 
   @override
   void dispose() {
@@ -134,9 +138,9 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget _buildWelcomeText() {
     return Column(
       children: [
-        Text('Welcome Back!', style: AppTheme.headingMd.copyWith(color: _textPrimary)),
+        Text(_tr('welcome_back'), style: AppTheme.headingMd.copyWith(color: _textPrimary)),
         const SizedBox(height: 8),
-        Text('Sign in to continue', style: AppTheme.bodyMd.copyWith(color: _textSecondary)),
+        Text(_tr('sign_in_continue'), style: AppTheme.bodyMd.copyWith(color: _textSecondary)),
       ],
     );
   }
@@ -147,13 +151,13 @@ class _LoginScreenState extends State<LoginScreen> {
       keyboardType: TextInputType.emailAddress,
       style: TextStyle(color: _textPrimary),
       decoration: InputDecoration(
-        labelText: 'Email',
+        labelText: _tr('email'),
         prefixIcon: Icon(Icons.email_outlined, color: _textSecondary),
         labelStyle: TextStyle(color: _textSecondary),
       ),
       validator: (value) {
-        if (value == null || value.isEmpty) return 'Please enter your email';
-        if (!value.contains('@')) return 'Please enter a valid email';
+        if (value == null || value.isEmpty) return _tr('required_field');
+        if (!value.contains('@')) return _tr('invalid_email');
         return null;
       },
     );
@@ -165,7 +169,7 @@ class _LoginScreenState extends State<LoginScreen> {
       obscureText: _obscurePassword,
       style: TextStyle(color: _textPrimary),
       decoration: InputDecoration(
-        labelText: 'Password',
+        labelText: _tr('password'),
         prefixIcon: Icon(Icons.lock_outlined, color: _textSecondary),
         labelStyle: TextStyle(color: _textSecondary),
         suffixIcon: IconButton(
@@ -174,8 +178,8 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
       ),
       validator: (value) {
-        if (value == null || value.isEmpty) return 'Please enter your password';
-        if (value.length < 6) return 'Password must be at least 6 characters';
+        if (value == null || value.isEmpty) return _tr('required_field');
+        if (value.length < 6) return _tr('password_min_length');
         return null;
       },
     );
@@ -183,12 +187,12 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Widget _buildForgotPassword() {
     return Align(
-      alignment: Alignment.centerRight,
+      alignment: AlignmentDirectional.centerEnd,
       child: TextButton(
         onPressed: () => Navigator.of(context).push(
           MaterialPageRoute(builder: (_) => const ForgotPasswordScreen()),
         ),
-        child: const Text('Forgot Password?'),
+        child: Text(_tr('forgot_password')),
       ),
     );
   }
@@ -201,7 +205,7 @@ class _LoginScreenState extends State<LoginScreen> {
         onPressed: _isLoading ? null : _handleLogin,
         child: _isLoading
             ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
-            : const Text('Sign In'),
+            : Text(_tr('sign_in')),
       ),
     );
   }
@@ -210,12 +214,12 @@ class _LoginScreenState extends State<LoginScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Text("Don't have an account?", style: TextStyle(color: _textSecondary)),
+        Text(_tr('dont_have_account'), style: TextStyle(color: _textSecondary)),
         TextButton(
           onPressed: () => Navigator.of(context).push(
             MaterialPageRoute(builder: (_) => const RegisterScreen()),
           ),
-          child: const Text('Sign Up'),
+          child: Text(_tr('sign_up')),
         ),
       ],
     );

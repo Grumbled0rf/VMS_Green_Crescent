@@ -16,6 +16,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   bool _isLoading = false;
   bool _emailSent = false;
 
+    
   // Theme helpers
   bool get _isDark => Theme.of(context).brightness == Brightness.dark;
   Color get _bgColor => _isDark ? AppColors.darkBackground : AppColors.background;

@@ -1,6 +1,7 @@
 name: vms_flutter_app
-description: "Vehicle Management System - Emission Test Booking Platform"
+description: "Vehicle Management System - Green Crescent"
 publish_to: 'none'
+
 version: 1.0.0+1
 
 environment:
@@ -9,21 +10,16 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  
-  # Supabase
+
+  flutter_localizations:
+    sdk: flutter
+
   supabase_flutter: ^2.3.0
-  
-  # UI/UX
   cupertino_icons: ^1.0.8
   
-  # State Management (optional - add later if needed)
-  # provider: ^6.1.1
-  
-  # Local Storage
-  # shared_preferences: ^2.2.2
-  
-  # Utils
-  # intl: ^0.19.0
+  # Firebase
+  firebase_core: ^3.8.1
+  firebase_messaging: ^15.1.6
 
 dev_dependencies:
   flutter_test:
@@ -32,11 +28,6 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
-  
-  # Add custom fonts here if needed
-  # fonts:
-  #   - family: Poppins
-  #     fonts:
-  #       - asset: assets/fonts/Poppins-Regular.ttf
-  #       - asset: assets/fonts/Poppins-Bold.ttf
-  #         weight: 700
+  assets:
+    - assets/icon/
+    - assets/images/

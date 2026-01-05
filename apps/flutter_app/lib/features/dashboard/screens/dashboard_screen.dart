@@ -10,6 +10,7 @@ import '../../vehicles/screens/vehicle_detail_screen.dart';
 import '../../booking/screens/booking_screen.dart';
 import '../../profile/screens/edit_profile_screen.dart';
 import '../../settings/screens/settings_screen.dart';
+import '../../notifications/screens/notifications_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -171,9 +172,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ),
       actions: [
         IconButton(
-          icon: Badge(smallSize: 8, child: Icon(Icons.notifications_outlined, color: _textPrimary)),
-          onPressed: () => _showSnackBar('Notifications coming soon!'),
-        ),
+  icon: Badge(smallSize: 8, child: Icon(Icons.notifications_outlined, color: _textPrimary)),
+  onPressed: () => Navigator.of(context).push(
+    MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+  ),
+),
         const SizedBox(width: 8),
       ],
     );
