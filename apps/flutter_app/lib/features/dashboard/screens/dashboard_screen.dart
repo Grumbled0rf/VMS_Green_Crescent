@@ -819,7 +819,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (type == 'insurance' && _vehicles.isNotEmpty) {
       Navigator.push(context, MaterialPageRoute(builder: (_) => InsuranceBookingScreen(vehicle: _vehicles.first)));
     } else if (type == 'test' && _vehicles.isNotEmpty) {
-      Navigator.push(context, MaterialPageRoute(builder: (_) => CreateBookingScreen(vehicle: _vehicles.first, vehicles: _vehicles)));
+     Navigator.push(context, MaterialPageRoute(builder: (_) => CreateBookingScreen(vehicles: _vehicles)));
     } else {
       BookingOptionsDialog.show(context, vehicles: _vehicles);
     }
